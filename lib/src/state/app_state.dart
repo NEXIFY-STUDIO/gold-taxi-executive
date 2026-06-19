@@ -133,6 +133,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> requestRide() async {
     if (isLoading) return;
+    if (activeRide != null) {
+      error = 'Please complete or cancel current ride first.';
+      notifyListeners();
+      return;
+    }
 
     isLoading = true;
     error = null;
@@ -213,10 +218,10 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> resolveRidePlaceholder(Ride ride) async {
+  Future<void> resolveRide(Ride ride) async {
     if (!_requireOpsRole()) return;
     await adminCancelRide(ride);
-    opsNotice = 'Ride ${ride.id} resolved in mock ops state.';
+    opsNotice = 'Ride ${ride.id} resolved by ops.';
     notifyListeners();
   }
 
@@ -224,6 +229,8 @@ class AppState extends ChangeNotifier {
     activeRide = null;
     _offerCountdownTimer?.cancel();
     driverOfferSecondsRemaining = 0;
+    _rideSubscription?.cancel();
+    _rideSubscription = null;
     notifyListeners();
   }
 

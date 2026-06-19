@@ -29,10 +29,10 @@ void main() {
     expect(ride, isNotNull);
     expect(ride!.status, RideStatus.searching);
 
-    await state.resolveRidePlaceholder(ride);
+    await state.resolveRide(ride);
     await _waitForRideStatus(state, RideStatus.cancelled);
 
-    expect(state.opsNotice, contains('resolved in mock ops state'));
+    expect(state.opsNotice, contains('resolved by ops'));
   });
 }
 

@@ -115,7 +115,7 @@ class AdminDashboardScreen extends StatelessWidget {
                           child: _RideTile(
                             ride: ride,
                             onCancel: () => state.adminCancelRide(ride),
-                            onResolve: () => state.resolveRidePlaceholder(ride),
+                            onResolve: () => state.resolveRide(ride),
                           ),
                         ),
                       ),
