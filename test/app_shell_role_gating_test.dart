@@ -9,6 +9,7 @@ import 'package:goldtaxi_bolt_v2_5/src/data/models/ride.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/vehicle_class.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/repositories/ride_repository.dart';
 import 'package:goldtaxi_bolt_v2_5/src/models/app_user_role.dart';
+import 'package:goldtaxi_bolt_v2_5/src/services/auth/auth_gateway.dart';
 import 'package:goldtaxi_bolt_v2_5/src/services/push/client_profile_repository.dart';
 import 'package:goldtaxi_bolt_v2_5/src/services/push/push_notification_service.dart';
 import 'package:goldtaxi_bolt_v2_5/src/state/app_state.dart';
@@ -27,6 +28,21 @@ void main() {
     expect(find.text('Driver'), findsNothing);
     expect(find.text('Ops'), findsNothing);
     expect(find.text('Book your ride'), findsOneWidget);
+  });
+
+  testWidgets('passenger auth panel offers Google without privileged tabs',
+      (tester) async {
+    final harness = await _pumpShell(
+      tester,
+      role: AppUserRole.passenger,
+      authGateway: _ShellAuthGateway(),
+    );
+
+    addTearDown(harness.dispose);
+
+    expect(find.text('Sign in with Google'), findsOneWidget);
+    expect(find.text('Driver'), findsNothing);
+    expect(find.text('Ops'), findsNothing);
   });
 
   testWidgets('driver sees driver navigation but not ops', (tester) async {
@@ -69,12 +85,15 @@ void main() {
 Future<_ShellHarness> _pumpShell(
   WidgetTester tester, {
   required AppUserRole role,
+  GoldTaxiAuthGateway? authGateway,
 }) async {
   final repository = _ShellRideRepository();
   final state = AppState(
     repository: repository,
     config: const AppConfig(),
     userRole: role,
+    authGateway: authGateway,
+    authProfile: authGateway?.currentProfile,
   );
   final pushService = PushNotificationService(
     messagingClient: const NoopPushMessagingClient(),
@@ -120,6 +139,32 @@ class _ShellHarness {
     state.dispose();
     repository.dispose();
   }
+}
+
+class _ShellAuthGateway implements GoldTaxiAuthGateway {
+  static const _profile = AuthProfile(
+    session: AuthSession(
+      uid: 'passenger-user',
+      provider: AuthProviderKind.guest,
+      displayName: 'GoldTaxi Passenger',
+    ),
+    role: AppUserRole.passenger,
+  );
+
+  @override
+  bool get supportsGoogleSignIn => true;
+
+  @override
+  AuthProfile? get currentProfile => _profile;
+
+  @override
+  Future<AuthProfile> ensureSignedInProfile() async => _profile;
+
+  @override
+  Future<AuthProfile> signInWithGoogle() async => _profile;
+
+  @override
+  Future<AuthProfile> signOutToGuest() async => _profile;
 }
 
 class _ShellRideRepository implements RideRepository {

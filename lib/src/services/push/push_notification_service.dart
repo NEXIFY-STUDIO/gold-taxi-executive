@@ -79,7 +79,7 @@ class PushNotificationService extends ChangeNotifier {
   final PushMessagingClient _messagingClient;
   final ClientProfileRepository _profileRepository;
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey;
-  final void Function(int shellIndex) _onOpenNotification;
+  void Function(int shellIndex) _onOpenNotification;
   final String? vapidKey;
 
   StreamSubscription<String>? _tokenRefreshSub;
@@ -127,6 +127,28 @@ class PushNotificationService extends ChangeNotifier {
     _setPermissionState(result);
     if (result == PushPermissionState.granted) {
       await _syncTokenIfPossible();
+    }
+  }
+
+  void setOpenNotificationHandler(void Function(int shellIndex) handler) {
+    _onOpenNotification = handler;
+  }
+
+  Future<void> refreshProfileAndToken() async {
+    if (!_initialized || _permissionState == PushPermissionState.unsupported) {
+      return;
+    }
+    try {
+      await _profileRepository.bootstrapProfiles();
+      _audiences = await _profileRepository.availableAudiences();
+      final token = _token;
+      if (token != null && token.isNotEmpty) {
+        await _registerTokenForAudiences(token);
+      }
+      notifyListeners();
+    } catch (error) {
+      _lastError = error.toString();
+      notifyListeners();
     }
   }
 

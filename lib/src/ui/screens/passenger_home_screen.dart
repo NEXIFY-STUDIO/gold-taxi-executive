@@ -289,6 +289,8 @@ class _BookingPanel extends StatelessWidget {
               style: TextStyle(color: Colors.white.withValues(alpha: .7)),
             ),
           ],
+          const SizedBox(height: 14),
+          const _AccountPanel(),
           const SizedBox(height: 12),
           TextField(
             controller: pickupController,
@@ -345,6 +347,90 @@ class _BookingPanel extends StatelessWidget {
           TextButton(
             onPressed: onRefreshRoute,
             child: const Text('Refresh route preview'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountPanel extends StatelessWidget {
+  const _AccountPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppStateScope.of(context);
+    if (!state.supportsGoogleSignIn) {
+      return const SizedBox.shrink();
+    }
+
+    final isGuest = state.isGuestSession;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .04),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: .08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isGuest
+                    ? Icons.person_outline_rounded
+                    : Icons.verified_user_rounded,
+                color: isGuest ? AppTheme.textMuted : AppTheme.gold,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      state.accountLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    Text(
+                      isGuest ? 'Guest checkout' : 'Google account',
+                      style: const TextStyle(
+                        color: AppTheme.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: isGuest
+                ? OutlinedButton.icon(
+                    onPressed: state.isAuthActionLoading
+                        ? null
+                        : state.signInWithGoogle,
+                    icon: state.isAuthActionLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.login_rounded),
+                    label: const Text('Sign in with Google'),
+                  )
+                : TextButton.icon(
+                    onPressed: state.isAuthActionLoading
+                        ? null
+                        : state.continueAsGuest,
+                    icon: const Icon(Icons.person_outline_rounded),
+                    label: const Text('Use guest mode'),
+                  ),
           ),
         ],
       ),

@@ -8,6 +8,7 @@ import 'package:goldtaxi_bolt_v2_5/src/data/models/ride.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/vehicle_class.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/repositories/firebase_ride_repository.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/repositories/firebase_runtime_gateway.dart';
+import 'package:goldtaxi_bolt_v2_5/src/services/auth/auth_gateway.dart';
 
 void main() {
   test('FirebaseRideRepository delegates ride commands and streams', () async {
@@ -73,6 +74,15 @@ class FakeFirebaseRuntimeGateway implements FirebaseRuntimeGateway {
   bool initialized = false;
   @override
   AppUserRole get userRole => AppUserRole.driver;
+  @override
+  AuthProfile? get authProfile => const AuthProfile(
+        session: AuthSession(
+          uid: 'driver-user',
+          provider: AuthProviderKind.google,
+          displayName: 'Driver User',
+        ),
+        role: AppUserRole.driver,
+      );
   int createRideCalls = 0;
   final setDriverOnlineCalls = <bool>[];
   final commandLog = <String>[];
@@ -101,6 +111,9 @@ class FakeFirebaseRuntimeGateway implements FirebaseRuntimeGateway {
       ),
     ];
   }
+
+  @override
+  Future<AppUserRole> refreshUserProfile() async => userRole;
 
   @override
   Stream<List<Driver>> watchDrivers(LocationPoint center) =>

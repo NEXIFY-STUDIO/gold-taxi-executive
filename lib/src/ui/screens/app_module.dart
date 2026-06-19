@@ -6,9 +6,11 @@ import '../../data/repositories/firebase_ride_repository.dart';
 import '../../data/repositories/mock_ride_repository.dart';
 import '../../data/repositories/ride_repository.dart';
 import '../../models/app_user_role.dart';
+import '../../services/auth/auth_gateway.dart';
+import '../../services/auth/firebase_auth_gateway.dart';
+import '../../services/push/client_profile_repository.dart';
 import '../../services/push/firebase_client_profile_repository.dart';
 import '../../services/push/firebase_push_messaging_client.dart';
-import '../../services/push/client_profile_repository.dart';
 import '../../services/push/push_notification_service.dart';
 import '../../state/app_state.dart';
 import 'app_shell.dart';
@@ -42,30 +44,42 @@ class _AppModuleState extends State<AppModule> {
 
   Future<void> _initializeModule() async {
     try {
+      final authGateway = widget.config.useFirebaseRuntime
+          ? FirebaseAuthGateway()
+          : NoopGoldTaxiAuthGateway();
       final repository = widget.config.useFirebaseRuntime
-          ? FirebaseRideRepository()
+          ? FirebaseRideRepository(authGateway: authGateway)
           : MockRideRepository();
       final role = await _resolveUserRole(repository);
-      final state = AppState(
-        repository: repository,
-        config: widget.config,
-        userRole: role,
-      );
-      await state.start();
 
       final pushService = PushNotificationService(
         messagingClient: widget.config.useFirebaseRuntime
             ? FirebasePushMessagingClient()
             : const NoopPushMessagingClient(),
         profileRepository: widget.config.useFirebaseRuntime
-            ? FirebaseClientProfileRepository()
+            ? FirebaseClientProfileRepository(authGateway: authGateway)
             : const NoopClientProfileRepository(),
         scaffoldMessengerKey: widget.scaffoldMessengerKey,
-        onOpenNotification: state.setShellIndex,
+        onOpenNotification: (_) {},
         vapidKey: widget.config.fcmWebVapidKey.isEmpty
             ? null
             : widget.config.fcmWebVapidKey,
       );
+      final state = AppState(
+        repository: repository,
+        config: widget.config,
+        userRole: role,
+        authGateway: authGateway,
+        authProfile: repository is FirebaseRideRepository
+            ? repository.authProfile
+            : authGateway.currentProfile,
+        refreshUserRole: repository is FirebaseRideRepository
+            ? repository.refreshUserProfile
+            : null,
+        onAuthChanged: pushService.refreshProfileAndToken,
+      );
+      await state.start();
+      pushService.setOpenNotificationHandler(state.setShellIndex);
       await pushService.initialize();
 
       if (!mounted) {

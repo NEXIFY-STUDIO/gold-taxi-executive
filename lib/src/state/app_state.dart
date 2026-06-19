@@ -9,6 +9,7 @@ import '../data/models/ride.dart';
 import '../data/models/vehicle_class.dart';
 import '../data/repositories/ride_repository.dart';
 import '../models/app_user_role.dart';
+import '../services/auth/auth_gateway.dart';
 import '../services/pricing_service.dart';
 
 class AppState extends ChangeNotifier {
@@ -16,11 +17,22 @@ class AppState extends ChangeNotifier {
     required RideRepository repository,
     required this.config,
     this.userRole = AppUserRole.passenger,
-  }) : _repository = repository;
+    GoldTaxiAuthGateway? authGateway,
+    Future<AppUserRole> Function()? refreshUserRole,
+    AuthProfile? authProfile,
+    Future<void> Function()? onAuthChanged,
+  })  : _repository = repository,
+        _authGateway = authGateway,
+        _refreshUserRole = refreshUserRole,
+        _authProfile = authProfile ?? authGateway?.currentProfile,
+        _onAuthChanged = onAuthChanged;
 
   final RideRepository _repository;
   final AppConfig config;
-  final AppUserRole userRole;
+  final GoldTaxiAuthGateway? _authGateway;
+  final Future<AppUserRole> Function()? _refreshUserRole;
+  final Future<void> Function()? _onAuthChanged;
+  AppUserRole userRole;
   final PricingService pricing = const PricingService();
 
   LocationPoint currentLocation = const LocationPoint(
@@ -46,6 +58,7 @@ class AppState extends ChangeNotifier {
   List<Ride> rides = [];
   Ride? activeRide;
   bool isLoading = false;
+  bool isAuthActionLoading = false;
   bool driverOnline = false;
   int driverOfferSecondsRemaining = 0;
   int completedTrips = 0;
@@ -65,6 +78,26 @@ class AppState extends ChangeNotifier {
   bool get canAccessOpsConsole => userRole.canAccessOpsTools;
 
   List<int> get visibleShellIndices => userRole.visibleShellIndices;
+
+  AuthProfile? _authProfile;
+
+  AuthProfile? get authProfile => _authProfile;
+
+  bool get supportsGoogleSignIn => _authGateway?.supportsGoogleSignIn ?? false;
+
+  bool get isGuestSession => _authProfile?.session.isGuest ?? true;
+
+  String get accountLabel {
+    final session = _authProfile?.session;
+    if (session == null || session.isGuest) {
+      return 'Guest';
+    }
+    final displayName = session.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) {
+      return displayName;
+    }
+    return session.email ?? 'Google account';
+  }
 
   Future<void> start() async {
     if (_started) {
@@ -166,6 +199,40 @@ class AppState extends ChangeNotifier {
       error = exception.toString();
     } finally {
       isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+    if (isAuthActionLoading || _authGateway == null) return;
+    isAuthActionLoading = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final profile = await _authGateway.signInWithGoogle();
+      await _applyAuthProfile(profile);
+    } catch (exception) {
+      error = exception.toString();
+    } finally {
+      isAuthActionLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> continueAsGuest() async {
+    if (isAuthActionLoading || _authGateway == null) return;
+    isAuthActionLoading = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final profile = await _authGateway.signOutToGuest();
+      await _applyAuthProfile(profile);
+    } catch (exception) {
+      error = exception.toString();
+    } finally {
+      isAuthActionLoading = false;
       notifyListeners();
     }
   }
@@ -314,6 +381,16 @@ class AppState extends ChangeNotifier {
     error = 'Ops role required.';
     notifyListeners();
     return false;
+  }
+
+  Future<void> _applyAuthProfile(AuthProfile profile) async {
+    _authProfile = profile;
+    final refreshedRole = await _refreshUserRole?.call();
+    userRole = refreshedRole ?? profile.role;
+    if (!visibleShellIndices.contains(shellIndex)) {
+      shellIndex = 0;
+    }
+    await _onAuthChanged?.call();
   }
 
   @override
