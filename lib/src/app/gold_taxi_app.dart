@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'browser_route.dart';
 import '../config/app_config.dart';
 import '../theme/app_theme.dart';
 import '../ui/screens/home_landing_screen.dart';
@@ -41,7 +42,30 @@ class _GoldTaxiAppState extends State<GoldTaxiApp> {
   }
 
   String _initialRoute() {
-    final route = WidgetsBinding.instance.platformDispatcher.defaultRouteName;
-    return route == '/' || route.isEmpty ? '/' : route;
+    return resolveGoldTaxiInitialRoute(
+      browserPath: currentBrowserPath(),
+      platformRoute:
+          WidgetsBinding.instance.platformDispatcher.defaultRouteName,
+    );
   }
+}
+
+@visibleForTesting
+String resolveGoldTaxiInitialRoute({
+  required String browserPath,
+  required String platformRoute,
+}) {
+  return _knownRoute(browserPath) ?? _knownRoute(platformRoute) ?? '/';
+}
+
+String? _knownRoute(String value) {
+  final trimmed = value.trim();
+  final route = trimmed.length > 1 && trimmed.endsWith('/')
+      ? trimmed.substring(0, trimmed.length - 1)
+      : trimmed;
+  return switch (route) {
+    '' || '/' => '/',
+    '/home' || '/app' => route,
+    _ => null,
+  };
 }

@@ -47,4 +47,28 @@ void main() {
     expect(find.text('Book your ride'), findsOneWidget);
     expect(find.text('FOUNDING PARTNER PROGRAM 2026'), findsNothing);
   });
+
+  test('resolves browser path before platform route on hosted web', () {
+    expect(
+      resolveGoldTaxiInitialRoute(
+        browserPath: '/app',
+        platformRoute: '/',
+      ),
+      '/app',
+    );
+    expect(
+      resolveGoldTaxiInitialRoute(
+        browserPath: '/home',
+        platformRoute: '/app',
+      ),
+      '/home',
+    );
+    expect(
+      resolveGoldTaxiInitialRoute(
+        browserPath: '/unknown',
+        platformRoute: '/',
+      ),
+      '/',
+    );
+  });
 }
