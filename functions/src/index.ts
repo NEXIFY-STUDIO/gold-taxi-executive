@@ -4,7 +4,12 @@ import { getMessaging } from 'firebase-admin/messaging';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
-import { approveDriverForUser } from './driver_provisioning';
+import {
+  approveDriverApplication,
+  approveDriverForUser,
+  rejectDriverApplication,
+  submitDriverApplicationForUser,
+} from './driver_provisioning';
 import { setRoleResolver, requireAdmin, requireDriver, ensureAuth, readUserRole, RoleResolver } from './roles';
 
 initializeApp();
@@ -366,6 +371,51 @@ export const bootstrapDriverProfile = onCall({ region: REGION }, async (request)
   return { uid, driverId: driverRef.id };
 });
 
+export const submitDriverApplication = onCall({ region: REGION }, async (request) => {
+  const actorUid = ensureAuth(request);
+  return submitDriverApplicationForUser({
+    actorUid,
+    data: request.data,
+    deps: driverApplicationDeps(),
+  });
+});
+
+export const listDriverApplications = onCall({ region: REGION }, async (request) => {
+  await requireAdmin(request);
+  const snap = await db
+    .collection('driver_applications')
+    .where('status', '==', 'pending')
+    .limit(50)
+    .get();
+
+  const applications = snap.docs
+    .map((doc) => serializeDriverApplication(doc.id, doc.data()))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  return { applications };
+});
+
+export const approveDriverRequest = onCall({ region: REGION }, async (request) => {
+  await requireAdmin(request);
+  const actorUid = ensureAuth(request);
+  const applicationId = readCallableText(request.data?.applicationId, 'applicationId');
+  return approveDriverApplication({
+    actorUid,
+    applicationId,
+    deps: driverApplicationDeps(),
+  });
+});
+
+export const rejectDriverRequest = onCall({ region: REGION }, async (request) => {
+  await requireAdmin(request);
+  const actorUid = ensureAuth(request);
+  return rejectDriverApplication({
+    actorUid,
+    data: request.data,
+    deps: driverApplicationDeps(),
+  });
+});
+
 export const approveDriver = onCall({ region: REGION }, async (request) => {
   await requireAdmin(request);
   const actorUid = ensureAuth(request);
@@ -410,6 +460,112 @@ export const approveDriver = onCall({ region: REGION }, async (request) => {
     },
   });
 });
+
+function driverApplicationDeps() {
+  return {
+    readUserRole,
+    getAuthUser: async (uid: string) => {
+      try {
+        const user = await getAuth().getUser(uid);
+        return {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          customClaims: user.customClaims,
+        };
+      } catch {
+        return null;
+      }
+    },
+    setCustomUserClaims: (uid: string, claims: Record<string, unknown>) =>
+      getAuth().setCustomUserClaims(uid, claims),
+    findDriverByUserId: async (uid: string) => {
+      const snap = await db.collection('drivers').where('userId', '==', uid).limit(1).get();
+      if (snap.empty) return null;
+      return {
+        id: snap.docs[0].id,
+        data: snap.docs[0].data(),
+      };
+    },
+    setUserProfile: async (uid: string, data: Record<string, unknown>) => {
+      await db.doc(`users/${uid}`).set(data, { merge: true });
+    },
+    setDriverProfile: async (driverId: string | null, data: Record<string, unknown>) => {
+      const driverRef = driverId ? db.doc(`drivers/${driverId}`) : db.collection('drivers').doc();
+      await driverRef.set(data, { merge: true });
+      return driverRef.id;
+    },
+    findPendingDriverApplicationByUserId: async (uid: string) => {
+      const snap = await db
+        .collection('driver_applications')
+        .where('userId', '==', uid)
+        .where('status', '==', 'pending')
+        .limit(1)
+        .get();
+      if (snap.empty) return null;
+      return {
+        id: snap.docs[0].id,
+        data: snap.docs[0].data(),
+      };
+    },
+    getDriverApplication: async (applicationId: string) => {
+      const snap = await db.doc(`driver_applications/${applicationId}`).get();
+      if (!snap.exists) return null;
+      return {
+        id: snap.id,
+        data: snap.data() ?? {},
+      };
+    },
+    setDriverApplication: async (applicationId: string | null, data: Record<string, unknown>) => {
+      const ref = applicationId
+        ? db.doc(`driver_applications/${applicationId}`)
+        : db.collection('driver_applications').doc();
+      await ref.set(data, { merge: true });
+      return ref.id;
+    },
+    updateDriverApplication: async (applicationId: string, data: Record<string, unknown>) => {
+      await db.doc(`driver_applications/${applicationId}`).set(data, { merge: true });
+    },
+    now: () => FieldValue.serverTimestamp(),
+  };
+}
+
+function serializeDriverApplication(id: string, data: Record<string, unknown>) {
+  return {
+    id,
+    userId: String(data.userId ?? ''),
+    fullName: String(data.fullName ?? ''),
+    phone: String(data.phone ?? ''),
+    vehicleLabel: String(data.vehicleLabel ?? ''),
+    licensePlate: String(data.licensePlate ?? ''),
+    vehicleClass: String(data.vehicleClass ?? 'premium'),
+    status: String(data.status ?? 'pending'),
+    createdAt: timestampToIso(data.createdAt),
+    updatedAt: timestampToIso(data.updatedAt),
+    rejectionReason:
+      typeof data.rejectionReason === 'string' ? data.rejectionReason : null,
+  };
+}
+
+function timestampToIso(value: unknown): string {
+  if (value instanceof Timestamp) {
+    return value.toDate().toISOString();
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  return new Date(0).toISOString();
+}
+
+function readCallableText(value: unknown, field: string): string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new HttpsError('invalid-argument', `${field} is required.`);
+  }
+  return value.trim();
+}
 
 export const setDriverOnline = onCall({ region: REGION }, async (request) => {
   const uid = await requireDriver(request);

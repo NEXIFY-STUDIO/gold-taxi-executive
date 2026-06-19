@@ -53,6 +53,19 @@ void main() {
     await repository.completeRide('ride-1');
     await repository.cancelRide('ride-1', 'ops');
     await repository.adminCancelRide('ride-1', 'ops');
+    final applicationId = await repository.submitDriverApplication(
+      const DriverApplicationInput(
+        fullName: 'Driver User',
+        phone: '+421900000000',
+        vehicleLabel: 'Mercedes S-Class',
+        licensePlate: 'ZH 824 611',
+        vehicleClass: DriverApplicationVehicleClass.executive,
+      ),
+    );
+    final applications = await repository.loadDriverApplications();
+    final applicationDriverId =
+        await repository.approveDriverApplication(applicationId);
+    await repository.rejectDriverApplication(applicationId, 'no');
     final driverId = await repository.approveDriver(
       const DriverApprovalInput(
         targetUid: 'passenger-user',
@@ -64,6 +77,9 @@ void main() {
       ),
     );
 
+    expect(applicationId, 'application-1');
+    expect(applications.single.id, 'application-1');
+    expect(applicationDriverId, 'drv-application');
     expect(driverId, 'drv-approved');
     expect(gateway.commandLog, [
       'accept:ride-1',
@@ -73,6 +89,9 @@ void main() {
       'complete:ride-1',
       'cancel:ride-1:ops',
       'ops-cancel:ride-1:ops',
+      'submit-application:Driver User',
+      'approve-application:application-1',
+      'reject-application:application-1:no',
       'approve:passenger-user',
     ]);
 
@@ -193,6 +212,44 @@ class FakeFirebaseRuntimeGateway implements FirebaseRuntimeGateway {
   @override
   Future<void> adminCancelRide(String rideId, String reason) async {
     commandLog.add('ops-cancel:$rideId:$reason');
+  }
+
+  @override
+  Future<String> submitDriverApplication(DriverApplicationInput input) async {
+    commandLog.add('submit-application:${input.fullName}');
+    return 'application-1';
+  }
+
+  @override
+  Future<List<DriverApplication>> loadDriverApplications() async {
+    return [
+      DriverApplication(
+        id: 'application-1',
+        userId: 'passenger-user',
+        fullName: 'Driver User',
+        phone: '+421900000000',
+        vehicleLabel: 'Mercedes S-Class',
+        licensePlate: 'ZH 824 611',
+        vehicleClass: DriverApplicationVehicleClass.executive,
+        status: DriverApplicationStatus.pending,
+        createdAt: DateTime.utc(2026, 6, 19),
+        updatedAt: DateTime.utc(2026, 6, 19),
+      ),
+    ];
+  }
+
+  @override
+  Future<String> approveDriverApplication(String applicationId) async {
+    commandLog.add('approve-application:$applicationId');
+    return 'drv-application';
+  }
+
+  @override
+  Future<void> rejectDriverApplication(
+    String applicationId,
+    String reason,
+  ) async {
+    commandLog.add('reject-application:$applicationId:$reason');
   }
 
   @override

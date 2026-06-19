@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../data/models/driver.dart';
 import '../../data/models/driver_approval.dart';
 import '../../data/models/ride.dart';
-import '../../data/models/vehicle_class.dart';
 import '../../state/app_state.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/glass_panel.dart';
@@ -163,7 +162,7 @@ class AdminDashboardScreen extends StatelessWidget {
                         ),
                       ),
                     const Divider(height: 32, color: Colors.white12),
-                    const _DriverProvisioningPanel(),
+                    const _DriverApplicationsPanel(),
                     const Divider(height: 32, color: Colors.white12),
                     const Text(
                       'Ride control',
@@ -241,213 +240,200 @@ class AdminDashboardScreen extends StatelessWidget {
   }
 }
 
-class _DriverProvisioningPanel extends StatefulWidget {
-  const _DriverProvisioningPanel();
+class _DriverApplicationsPanel extends StatefulWidget {
+  const _DriverApplicationsPanel();
 
   @override
-  State<_DriverProvisioningPanel> createState() =>
-      _DriverProvisioningPanelState();
+  State<_DriverApplicationsPanel> createState() =>
+      _DriverApplicationsPanelState();
 }
 
-class _DriverProvisioningPanelState extends State<_DriverProvisioningPanel> {
-  final _uidController = TextEditingController();
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _vehicleController = TextEditingController(text: 'Mercedes S-Class');
-  final _plateController = TextEditingController();
-  VehicleClass _vehicleClass = VehicleClass.premium;
+class _DriverApplicationsPanelState extends State<_DriverApplicationsPanel> {
+  bool _queuedInitialLoad = false;
 
   @override
-  void dispose() {
-    _uidController.dispose();
-    _nameController.dispose();
-    _phoneController.dispose();
-    _vehicleController.dispose();
-    _plateController.dispose();
-    super.dispose();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_queuedInitialLoad) return;
+    _queuedInitialLoad = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      AppStateScope.of(context).loadDriverApplications();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final state = AppStateScope.of(context);
+    final pending = state.driverApplications
+        .where((item) => item.status == DriverApplicationStatus.pending)
+        .toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Driver approvals',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Žiadosti vodičov',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+              ),
+            ),
+            IconButton.filledTonal(
+              onPressed: state.isLoadingDriverApplications
+                  ? null
+                  : state.loadDriverApplications,
+              icon: state.isLoadingDriverApplications
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh_rounded),
+              tooltip: 'Refresh driver requests',
+            ),
+          ],
         ),
         const SizedBox(height: 6),
         const Text(
-          'Approve a registered passenger UID and create their driver profile.',
+          'Review passenger applications and approve only verified drivers.',
           style: TextStyle(color: AppTheme.textMuted),
         ),
         const SizedBox(height: 14),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final twoColumns = constraints.maxWidth >= 720;
-            final fields = [
-              _ProvisioningField(
-                controller: _uidController,
-                label: 'Passenger UID',
-                icon: Icons.verified_user_rounded,
-              ),
-              _ProvisioningField(
-                controller: _nameController,
-                label: 'Driver name',
-                icon: Icons.badge_rounded,
-              ),
-              _ProvisioningField(
-                controller: _phoneController,
-                label: 'Phone',
-                icon: Icons.phone_rounded,
-                keyboardType: TextInputType.phone,
-              ),
-              _ProvisioningField(
-                controller: _vehicleController,
-                label: 'Vehicle label',
-                icon: Icons.local_taxi_rounded,
-              ),
-              _ProvisioningField(
-                controller: _plateController,
-                label: 'License plate',
-                icon: Icons.confirmation_number_rounded,
-                textCapitalization: TextCapitalization.characters,
-              ),
-              DropdownButtonFormField<VehicleClass>(
-                initialValue: _vehicleClass,
-                decoration: _fieldDecoration(
-                  'Vehicle class',
-                  Icons.workspace_premium_rounded,
-                ),
-                dropdownColor: const Color(0xFF151611),
-                borderRadius: BorderRadius.circular(14),
-                items: VehicleClass.values
-                    .map(
-                      (value) => DropdownMenuItem<VehicleClass>(
-                        value: value,
-                        child: Text(value.label),
-                      ),
-                    )
-                    .toList(),
-                onChanged: state.isProvisioningDriver
-                    ? null
-                    : (value) {
-                        if (value == null) return;
-                        setState(() => _vehicleClass = value);
-                      },
-              ),
-            ];
-
-            if (!twoColumns) {
-              return Column(
-                children: [
-                  for (final field in fields) ...[
-                    field,
-                    const SizedBox(height: 10),
-                  ],
-                ],
-              );
-            }
-
-            return Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: fields
-                  .map(
-                    (field) => SizedBox(
-                      width: (constraints.maxWidth - 12) / 2,
-                      child: field,
-                    ),
-                  )
-                  .toList(),
-            );
-          },
-        ),
-        const SizedBox(height: 14),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed:
-                state.isProvisioningDriver ? null : () => _submit(context),
-            icon: state.isProvisioningDriver
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.how_to_reg_rounded),
-            label: Text(
-              state.isProvisioningDriver ? 'Approving...' : 'Approve driver',
+        if (pending.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .035),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: const Text(
+              'No pending driver requests.',
+              style: TextStyle(color: AppTheme.textMuted),
+            ),
+          )
+        else
+          ...pending.map(
+            (application) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _DriverApplicationTile(application: application),
             ),
           ),
-        ),
       ],
     );
   }
-
-  void _submit(BuildContext context) {
-    final state = AppStateScope.of(context);
-    state.approveDriver(
-      DriverApprovalInput(
-        targetUid: _uidController.text,
-        name: _nameController.text,
-        phone: _phoneController.text,
-        vehicleLabel: _vehicleController.text,
-        licensePlate: _plateController.text,
-        vehicleClass: _vehicleClass,
-      ),
-    );
-  }
 }
 
-class _ProvisioningField extends StatelessWidget {
-  const _ProvisioningField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.keyboardType,
-    this.textCapitalization = TextCapitalization.none,
-  });
+class _DriverApplicationTile extends StatelessWidget {
+  const _DriverApplicationTile({required this.application});
 
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final TextInputType? keyboardType;
-  final TextCapitalization textCapitalization;
+  final DriverApplication application;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      textCapitalization: textCapitalization,
-      decoration: _fieldDecoration(label, icon),
+    final state = AppStateScope.of(context);
+    final busy = state.isReviewingDriverApplication;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .04),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [AppTheme.goldBright, AppTheme.gold],
+                  ),
+                ),
+                child: const Icon(
+                  Icons.drive_eta_rounded,
+                  color: Colors.black,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      application.fullName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${application.vehicleLabel} · ${application.licensePlate}',
+                      style: const TextStyle(color: AppTheme.textMuted),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${application.phone} · ${application.userId}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .55),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              StatusChip(
+                label: application.vehicleClass.label.toUpperCase(),
+                color: AppTheme.gold,
+                icon: Icons.workspace_premium_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => state.approveDriverApplication(application),
+                icon: busy
+                    ? const SizedBox(
+                        width: 17,
+                        height: 17,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.verified_rounded),
+                label: const Text('Approve'),
+              ),
+              OutlinedButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => state.rejectDriverApplication(application),
+                icon: const Icon(Icons.block_rounded),
+                label: const Text('Reject'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
-}
-
-InputDecoration _fieldDecoration(String label, IconData icon) {
-  return InputDecoration(
-    labelText: label,
-    prefixIcon: Icon(icon, size: 19),
-    isDense: true,
-    filled: true,
-    fillColor: Colors.white.withValues(alpha: .045),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: Colors.white12),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: Colors.white12),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: AppTheme.gold),
-    ),
-  );
 }
 
 Ride? _firstRide(List<Ride> rides) {

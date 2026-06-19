@@ -42,6 +42,7 @@ void main() {
     addTearDown(harness.dispose);
 
     expect(find.text('Sign in with Google'), findsOneWidget);
+    expect(find.text('Požiadať o vodičský účet'), findsOneWidget);
     expect(find.text('Driver'), findsNothing);
     expect(find.text('Ops'), findsNothing);
   });
@@ -80,7 +81,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Live operations'), findsOneWidget);
-    expect(find.text('Driver approvals'), findsOneWidget);
+    expect(find.text('Žiadosti vodičov'), findsOneWidget);
   });
 }
 
@@ -210,6 +211,23 @@ class _ShellRideRepository implements RideRepository {
 
   @override
   Future<void> adminCancelRide(String rideId, String reason) async {}
+
+  @override
+  Future<String> submitDriverApplication(DriverApplicationInput input) async =>
+      'application-1';
+
+  @override
+  Future<List<DriverApplication>> loadDriverApplications() async => const [];
+
+  @override
+  Future<String> approveDriverApplication(String applicationId) async =>
+      'driver-approved';
+
+  @override
+  Future<void> rejectDriverApplication(
+    String applicationId,
+    String reason,
+  ) async {}
 
   @override
   Future<String> approveDriver(DriverApprovalInput input) async =>

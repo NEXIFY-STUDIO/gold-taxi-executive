@@ -12,7 +12,7 @@ import 'package:goldtaxi_bolt_v2_5/src/models/app_user_role.dart';
 import 'package:goldtaxi_bolt_v2_5/src/state/app_state.dart';
 
 void main() {
-  test('passenger cannot approve themselves as driver', () async {
+  test('passenger can create a driver application', () async {
     final repository = _ProvisioningRideRepository();
     final state = AppState(
       repository: repository,
@@ -25,13 +25,40 @@ void main() {
       repository.dispose();
     });
 
-    await state.approveDriver(_input(targetUid: 'passenger-user'));
+    await state.submitDriverApplication(_applicationInput());
 
-    expect(repository.approvals, isEmpty);
+    expect(repository.submittedApplications, hasLength(1));
+    expect(repository.approvedApplicationIds, isEmpty);
+    expect(repository.submittedApplications.single.toJson(), {
+      'fullName': 'Erik Driver',
+      'phone': '+421900000000',
+      'vehicleLabel': 'Mercedes S-Class',
+      'licensePlate': 'ZH 824 611',
+      'vehicleClass': 'executive',
+    });
+    expect(state.driverApplicationNotice, contains('Driver request sent'));
+  });
+
+  test('passenger cannot approve driver request', () async {
+    final repository = _ProvisioningRideRepository();
+    final state = AppState(
+      repository: repository,
+      config: const AppConfig(),
+      userRole: AppUserRole.passenger,
+    );
+
+    addTearDown(() {
+      state.dispose();
+      repository.dispose();
+    });
+
+    await state.approveDriverApplication(repository.pendingApplication);
+
+    expect(repository.approvedApplicationIds, isEmpty);
     expect(state.error, 'Ops role required.');
   });
 
-  test('driver cannot approve other drivers', () async {
+  test('driver cannot approve other driver requests', () async {
     final repository = _ProvisioningRideRepository();
     final state = AppState(
       repository: repository,
@@ -44,13 +71,13 @@ void main() {
       repository.dispose();
     });
 
-    await state.approveDriver(_input(targetUid: 'passenger-user'));
+    await state.approveDriverApplication(repository.pendingApplication);
 
-    expect(repository.approvals, isEmpty);
+    expect(repository.approvedApplicationIds, isEmpty);
     expect(state.error, 'Ops role required.');
   });
 
-  test('admin can submit driver approval profile', () async {
+  test('admin can approve driver request and refresh request list', () async {
     final repository = _ProvisioningRideRepository();
     final state = AppState(
       repository: repository,
@@ -63,37 +90,68 @@ void main() {
       repository.dispose();
     });
 
-    await state.approveDriver(_input(targetUid: 'passenger-user'));
+    await state.loadDriverApplications();
+    await state.approveDriverApplication(repository.pendingApplication);
 
-    expect(repository.approvals, hasLength(1));
-    expect(repository.approvals.single.toJson(), {
-      'targetUid': 'passenger-user',
-      'name': 'Erik Driver',
-      'phone': '+421900000000',
-      'vehicleLabel': 'Mercedes S-Class',
-      'licensePlate': 'ZH 824 611',
-      'vehicleClass': 'premium',
-    });
+    expect(repository.approvedApplicationIds, ['application-passenger']);
     expect(state.error, isNull);
     expect(state.opsNotice, contains('Erik Driver approved as driver'));
+    expect(state.driverApplications.single.status,
+        DriverApplicationStatus.approved);
+  });
+
+  test('admin rejection keeps passenger out of driver role', () async {
+    final repository = _ProvisioningRideRepository();
+    final state = AppState(
+      repository: repository,
+      config: const AppConfig(),
+      userRole: AppUserRole.admin,
+    );
+
+    addTearDown(() {
+      state.dispose();
+      repository.dispose();
+    });
+
+    await state.rejectDriverApplication(repository.pendingApplication);
+
+    expect(repository.rejectedApplicationIds, ['application-passenger']);
+    expect(repository.approvedApplicationIds, isEmpty);
+    expect(state.opsNotice, contains('driver request rejected'));
+    expect(state.driverApplications.single.status,
+        DriverApplicationStatus.rejected);
   });
 }
 
-DriverApprovalInput _input({required String targetUid}) {
-  return DriverApprovalInput(
-    targetUid: targetUid,
-    name: 'Erik Driver',
+DriverApplicationInput _applicationInput() {
+  return const DriverApplicationInput(
+    fullName: 'Erik Driver',
     phone: '+421900000000',
     vehicleLabel: 'Mercedes S-Class',
     licensePlate: 'zh 824 611',
-    vehicleClass: VehicleClass.premium,
+    vehicleClass: DriverApplicationVehicleClass.executive,
   );
 }
 
 class _ProvisioningRideRepository implements RideRepository {
   final _driversController = StreamController<List<Driver>>.broadcast()
     ..add(const []);
-  final approvals = <DriverApprovalInput>[];
+  final submittedApplications = <DriverApplicationInput>[];
+  final approvedApplicationIds = <String>[];
+  final rejectedApplicationIds = <String>[];
+
+  late DriverApplication pendingApplication = DriverApplication(
+    id: 'application-passenger',
+    userId: 'passenger-user',
+    fullName: 'Erik Driver',
+    phone: '+421900000000',
+    vehicleLabel: 'Mercedes S-Class',
+    licensePlate: 'ZH 824 611',
+    vehicleClass: DriverApplicationVehicleClass.executive,
+    status: DriverApplicationStatus.pending,
+    createdAt: DateTime.utc(2026, 6, 19),
+    updatedAt: DateTime.utc(2026, 6, 19),
+  );
 
   @override
   Stream<List<Driver>> nearbyDrivers(LocationPoint center) {
@@ -134,10 +192,58 @@ class _ProvisioningRideRepository implements RideRepository {
   Future<void> adminCancelRide(String rideId, String reason) async {}
 
   @override
-  Future<String> approveDriver(DriverApprovalInput input) async {
-    approvals.add(input);
+  Future<String> submitDriverApplication(DriverApplicationInput input) async {
+    submittedApplications.add(input);
+    return pendingApplication.id;
+  }
+
+  @override
+  Future<List<DriverApplication>> loadDriverApplications() async {
+    return [pendingApplication];
+  }
+
+  @override
+  Future<String> approveDriverApplication(String applicationId) async {
+    approvedApplicationIds.add(applicationId);
+    pendingApplication = DriverApplication(
+      id: pendingApplication.id,
+      userId: pendingApplication.userId,
+      fullName: pendingApplication.fullName,
+      phone: pendingApplication.phone,
+      vehicleLabel: pendingApplication.vehicleLabel,
+      licensePlate: pendingApplication.licensePlate,
+      vehicleClass: pendingApplication.vehicleClass,
+      status: DriverApplicationStatus.approved,
+      createdAt: pendingApplication.createdAt,
+      updatedAt: DateTime.utc(2026, 6, 19, 1),
+    );
     return 'driver-passenger-user';
   }
+
+  @override
+  Future<void> rejectDriverApplication(
+    String applicationId,
+    String reason,
+  ) async {
+    rejectedApplicationIds.add(applicationId);
+    pendingApplication = DriverApplication(
+      id: pendingApplication.id,
+      userId: pendingApplication.userId,
+      fullName: pendingApplication.fullName,
+      phone: pendingApplication.phone,
+      vehicleLabel: pendingApplication.vehicleLabel,
+      licensePlate: pendingApplication.licensePlate,
+      vehicleClass: pendingApplication.vehicleClass,
+      status: DriverApplicationStatus.rejected,
+      createdAt: pendingApplication.createdAt,
+      updatedAt: DateTime.utc(2026, 6, 19, 1),
+      rejectionReason: reason,
+    );
+  }
+
+  @override
+  Future<String> approveDriver(DriverApprovalInput input) async =>
+      'driver-passenger-user';
 
   @override
   Future<void> setDriverOnline(bool online) async {}

@@ -23,6 +23,7 @@ class MockRideRepository implements RideRepository {
   final _payment = MockPaymentGateway();
   final Map<String, StreamController<Ride>> _rideControllers = {};
   final Map<String, Ride> _rides = {};
+  final Map<String, DriverApplication> _driverApplications = {};
   Timer? _driverTimer;
   Timer? _offerTimer;
   double _tick = 0;
@@ -278,6 +279,85 @@ class MockRideRepository implements RideRepository {
   @override
   Future<void> adminCancelRide(String rideId, String reason) async {
     await cancelRide(rideId, reason);
+  }
+
+  @override
+  Future<String> submitDriverApplication(DriverApplicationInput input) async {
+    final id = 'app_${DateTime.now().millisecondsSinceEpoch}';
+    _driverApplications[id] = DriverApplication(
+      id: id,
+      userId: 'mock-passenger',
+      fullName: input.fullName.trim(),
+      phone: input.phone.trim(),
+      vehicleLabel: input.vehicleLabel.trim(),
+      licensePlate: input.licensePlate.trim().toUpperCase(),
+      vehicleClass: input.vehicleClass,
+      status: DriverApplicationStatus.pending,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    return id;
+  }
+
+  @override
+  Future<List<DriverApplication>> loadDriverApplications() async {
+    return _driverApplications.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  @override
+  Future<String> approveDriverApplication(String applicationId) async {
+    final application = _driverApplications[applicationId];
+    if (application == null) {
+      throw StateError('Driver application not found.');
+    }
+    final driverId = await approveDriver(
+      DriverApprovalInput(
+        targetUid: application.userId,
+        name: application.fullName,
+        phone: application.phone,
+        vehicleLabel: application.vehicleLabel,
+        licensePlate: application.licensePlate,
+        vehicleClass: application.vehicleClass.driverVehicleClass,
+      ),
+    );
+    _driverApplications[applicationId] = DriverApplication(
+      id: application.id,
+      userId: application.userId,
+      fullName: application.fullName,
+      phone: application.phone,
+      vehicleLabel: application.vehicleLabel,
+      licensePlate: application.licensePlate,
+      vehicleClass: application.vehicleClass,
+      status: DriverApplicationStatus.approved,
+      createdAt: application.createdAt,
+      updatedAt: DateTime.now(),
+    );
+    return driverId;
+  }
+
+  @override
+  Future<void> rejectDriverApplication(
+    String applicationId,
+    String reason,
+  ) async {
+    final application = _driverApplications[applicationId];
+    if (application == null) {
+      throw StateError('Driver application not found.');
+    }
+    _driverApplications[applicationId] = DriverApplication(
+      id: application.id,
+      userId: application.userId,
+      fullName: application.fullName,
+      phone: application.phone,
+      vehicleLabel: application.vehicleLabel,
+      licensePlate: application.licensePlate,
+      vehicleClass: application.vehicleClass,
+      status: DriverApplicationStatus.rejected,
+      createdAt: application.createdAt,
+      updatedAt: DateTime.now(),
+      rejectionReason: reason.trim(),
+    );
   }
 
   @override

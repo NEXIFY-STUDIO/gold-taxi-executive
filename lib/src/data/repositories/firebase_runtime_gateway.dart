@@ -45,6 +45,14 @@ abstract class FirebaseRuntimeGateway {
 
   Future<void> adminCancelRide(String rideId, String reason);
 
+  Future<String> submitDriverApplication(DriverApplicationInput input);
+
+  Future<List<DriverApplication>> loadDriverApplications();
+
+  Future<String> approveDriverApplication(String applicationId);
+
+  Future<void> rejectDriverApplication(String applicationId, String reason);
+
   Future<String> approveDriver(DriverApprovalInput input);
 
   Future<void> setDriverOnline(bool online);
@@ -257,6 +265,68 @@ class FirebaseRuntimeGatewayImpl implements FirebaseRuntimeGateway {
       'rideId': rideId,
       'reason': reason,
     });
+  }
+
+  @override
+  Future<String> submitDriverApplication(DriverApplicationInput input) async {
+    _ensureInitialized();
+    final response = await _functions
+        .httpsCallable('submitDriverApplication')
+        .call(input.toJson());
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final applicationId = data['applicationId']?.toString();
+    if (applicationId == null || applicationId.isEmpty) {
+      throw StateError('submitDriverApplication returned no applicationId.');
+    }
+    return applicationId;
+  }
+
+  @override
+  Future<List<DriverApplication>> loadDriverApplications() async {
+    _ensureInitialized();
+    final response =
+        await _functions.httpsCallable('listDriverApplications').call();
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final rawApplications = data['applications'];
+    if (rawApplications is! List) {
+      return const [];
+    }
+    return rawApplications
+        .whereType<Map>()
+        .map(
+          (item) => DriverApplication.fromJson(
+            Map<String, dynamic>.from(item),
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<String> approveDriverApplication(String applicationId) async {
+    _ensureInitialized();
+    final response = await _functions
+        .httpsCallable('approveDriverRequest')
+        .call(<String, dynamic>{'applicationId': applicationId});
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final driverId = data['driverId']?.toString();
+    if (driverId == null || driverId.isEmpty) {
+      throw StateError('approveDriverRequest returned no driverId.');
+    }
+    return driverId;
+  }
+
+  @override
+  Future<void> rejectDriverApplication(
+    String applicationId,
+    String reason,
+  ) async {
+    _ensureInitialized();
+    await _functions.httpsCallable('rejectDriverRequest').call(
+      <String, dynamic>{
+        'applicationId': applicationId,
+        'reason': reason,
+      },
+    );
   }
 
   @override

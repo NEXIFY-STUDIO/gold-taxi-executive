@@ -161,6 +161,23 @@ class _AuthFlowRideRepository implements RideRepository {
   Future<void> adminCancelRide(String rideId, String reason) async {}
 
   @override
+  Future<String> submitDriverApplication(DriverApplicationInput input) async =>
+      'application-1';
+
+  @override
+  Future<List<DriverApplication>> loadDriverApplications() async => const [];
+
+  @override
+  Future<String> approveDriverApplication(String applicationId) async =>
+      'driver-approved';
+
+  @override
+  Future<void> rejectDriverApplication(
+    String applicationId,
+    String reason,
+  ) async {}
+
+  @override
   Future<String> approveDriver(DriverApprovalInput input) async =>
       'driver-approved';
 

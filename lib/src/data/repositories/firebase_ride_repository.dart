@@ -71,6 +71,22 @@ class FirebaseRideRepository implements RideRepository {
       _gateway.adminCancelRide(rideId, reason);
 
   @override
+  Future<String> submitDriverApplication(DriverApplicationInput input) =>
+      _gateway.submitDriverApplication(input);
+
+  @override
+  Future<List<DriverApplication>> loadDriverApplications() =>
+      _gateway.loadDriverApplications();
+
+  @override
+  Future<String> approveDriverApplication(String applicationId) =>
+      _gateway.approveDriverApplication(applicationId);
+
+  @override
+  Future<void> rejectDriverApplication(String applicationId, String reason) =>
+      _gateway.rejectDriverApplication(applicationId, reason);
+
+  @override
   Future<String> approveDriver(DriverApprovalInput input) =>
       _gateway.approveDriver(input);
 
