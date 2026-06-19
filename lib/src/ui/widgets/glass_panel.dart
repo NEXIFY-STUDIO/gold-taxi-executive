@@ -4,7 +4,7 @@ class GlassPanel extends StatelessWidget {
   const GlassPanel({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(18),
+    this.padding = const EdgeInsets.all(16),
   });
 
   final Widget child;
@@ -15,13 +15,13 @@ class GlassPanel extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: const Color(0xFF111009).withValues(alpha: .94),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: Colors.white.withValues(alpha: .08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: .4),
-            blurRadius: 32,
-            offset: const Offset(0, 18),
+            color: Colors.black.withValues(alpha: .36),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
         ],
       ),

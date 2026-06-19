@@ -36,7 +36,9 @@ class _LandingPageScreenState extends State<LandingPageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width >= 960;
+    final width = MediaQuery.sizeOf(context).width;
+    final wide = width >= 960;
+    final compact = width < 480;
     return Scaffold(
       backgroundColor: AppTheme.black,
       body: Stack(
@@ -45,26 +47,28 @@ class _LandingPageScreenState extends State<LandingPageScreen> {
           SingleChildScrollView(
             child: Column(
               children: [
-                const SizedBox(height: 88),
+                SizedBox(height: compact ? 62 : 78),
                 _TopNav(
                   brand: widget.brand,
+                  compact: compact,
                   lang: lang,
                   onLang: (v) => setState(() => lang = v),
                 ),
                 _Hero(
                   brand: widget.brand,
+                  compact: compact,
                   lang: lang,
                   wide: wide,
                   onPrimaryTap: () => Navigator.of(context).pushNamed('/app'),
                   onSecondaryTap: _scrollToFeatures,
                 ),
-                _Stats(lang: lang, wide: wide),
+                _Stats(lang: lang, wide: wide, compact: compact),
                 KeyedSubtree(
                   key: _featuresKey,
-                  child: _Features(lang: lang, wide: wide),
+                  child: _Features(lang: lang, wide: wide, compact: compact),
                 ),
-                _Roadmap(lang: lang, wide: wide),
-                _CTA(lang: lang, wide: wide),
+                _Roadmap(lang: lang, wide: wide, compact: compact),
+                _CTA(lang: lang, wide: wide, compact: compact),
                 _Footer(brand: widget.brand, lang: lang),
               ],
             ),
@@ -107,19 +111,21 @@ class _GlowBg extends StatelessWidget {
 class _TopNav extends StatelessWidget {
   const _TopNav({
     required this.brand,
+    required this.compact,
     required this.lang,
     required this.onLang,
   });
 
   final BrandConfig brand;
+  final bool compact;
   final Lang lang;
   final ValueChanged<Lang> onLang;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 18),
+      height: compact ? 58 : 66,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 18),
       decoration: BoxDecoration(
         color: AppTheme.black.withValues(alpha: .88),
         border: Border(
@@ -134,7 +140,7 @@ class _TopNav extends StatelessWidget {
                 color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
           ),
           Wrap(
-            spacing: 6,
+            spacing: compact ? 4 : 6,
             children: [
               _langChip('EN', Lang.en),
               _langChip('DE', Lang.de),
@@ -156,7 +162,7 @@ class _TopNav extends StatelessWidget {
       labelStyle: TextStyle(
         color: selected ? Colors.black : Colors.white,
         fontWeight: FontWeight.w800,
-        fontSize: 11,
+        fontSize: compact ? 10 : 11,
       ),
       selectedColor: AppTheme.gold,
       backgroundColor: AppTheme.surface,
@@ -171,12 +177,14 @@ class _TopNav extends StatelessWidget {
 class _Hero extends StatelessWidget {
   const _Hero({
     required this.brand,
+    required this.compact,
     required this.lang,
     required this.wide,
     required this.onPrimaryTap,
     required this.onSecondaryTap,
   });
   final BrandConfig brand;
+  final bool compact;
   final Lang lang;
   final bool wide;
   final VoidCallback onPrimaryTap;
@@ -186,46 +194,47 @@ class _Hero extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(
-          horizontal: wide ? 72 : 20, vertical: wide ? 88 : 56),
+          horizontal: wide ? 72 : 18,
+          vertical: wide ? 78 : (compact ? 36 : 48)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1120),
         child: Column(
           children: [
             _badge(_t(lang, 'hero_tag')),
-            const SizedBox(height: 24),
+            SizedBox(height: compact ? 16 : 22),
             Text(
               brand.displayName,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: wide ? 88 : 52,
-                height: .95,
+                fontSize: wide ? 82 : (compact ? 42 : 50),
+                height: compact ? 1.0 : .95,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 0,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               _t(lang, 'hero_sub'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppTheme.gold,
-                fontSize: wide ? 18 : 12,
+                fontSize: wide ? 17 : 12,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0,
               ),
             ),
-            const SizedBox(height: 22),
+            SizedBox(height: compact ? 14 : 20),
             Text(
               _t(lang, 'hero_desc'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppTheme.textMuted,
-                fontSize: wide ? 16 : 14,
-                height: 1.65,
+                fontSize: wide ? 16 : 13,
+                height: 1.48,
               ),
             ),
-            const SizedBox(height: 34),
+            SizedBox(height: compact ? 22 : 30),
             Wrap(
               spacing: 14,
               runSpacing: 14,
@@ -236,8 +245,9 @@ class _Hero extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     backgroundColor: AppTheme.gold,
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 26, vertical: 18),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: compact ? 18 : 24,
+                        vertical: compact ? 13 : 16),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(999)),
                   ),
@@ -249,8 +259,9 @@ class _Hero extends StatelessWidget {
                     foregroundColor: Colors.white,
                     side:
                         BorderSide(color: Colors.white.withValues(alpha: .14)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 26, vertical: 18),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: compact ? 18 : 24,
+                        vertical: compact ? 13 : 16),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(999)),
                   ),
@@ -266,9 +277,14 @@ class _Hero extends StatelessWidget {
 }
 
 class _Stats extends StatelessWidget {
-  const _Stats({required this.lang, required this.wide});
+  const _Stats({
+    required this.lang,
+    required this.wide,
+    required this.compact,
+  });
   final Lang lang;
   final bool wide;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -281,7 +297,7 @@ class _Stats extends StatelessWidget {
     return Container(
       width: double.infinity,
       color: AppTheme.surface,
-      padding: const EdgeInsets.symmetric(vertical: 28),
+      padding: EdgeInsets.symmetric(vertical: compact ? 16 : 24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1200),
         child: Wrap(
@@ -292,21 +308,21 @@ class _Stats extends StatelessWidget {
                 (e) => SizedBox(
                   width: wide ? 300 : MediaQuery.sizeOf(context).width / 2,
                   child: Padding(
-                    padding: const EdgeInsets.all(18),
+                    padding: EdgeInsets.all(compact ? 10 : 16),
                     child: Column(
                       children: [
                         Text(e.$1,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: AppTheme.gold,
-                                fontSize: 30,
+                                fontSize: compact ? 23 : 28,
                                 fontWeight: FontWeight.w300)),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 5),
                         Text(e.$2.toUpperCase(),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                                 color: Colors.white.withValues(alpha: .5),
-                                fontSize: 10,
+                                fontSize: compact ? 9 : 10,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0)),
                       ],
@@ -322,9 +338,14 @@ class _Stats extends StatelessWidget {
 }
 
 class _Features extends StatelessWidget {
-  const _Features({required this.lang, required this.wide});
+  const _Features({
+    required this.lang,
+    required this.wide,
+    required this.compact,
+  });
   final Lang lang;
   final bool wide;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -336,7 +357,10 @@ class _Features extends StatelessWidget {
       (_t(lang, 'feat5_title'), _t(lang, 'feat5_desc')),
     ];
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: wide ? 72 : 20, vertical: 84),
+      padding: EdgeInsets.symmetric(
+        horizontal: wide ? 72 : 18,
+        vertical: wide ? 74 : (compact ? 50 : 64),
+      ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1120),
         child: Column(
@@ -352,19 +376,19 @@ class _Features extends StatelessWidget {
             Text(_t(lang, 'features_title'),
                 style: TextStyle(
                     color: Colors.white,
-                    fontSize: wide ? 38 : 28,
+                    fontSize: wide ? 36 : (compact ? 24 : 28),
                     fontWeight: FontWeight.w400,
                     height: 1.1)),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
             Text(
               _t(lang, 'features_desc'),
               style: const TextStyle(
                 color: AppTheme.textMuted,
-                fontSize: 15,
-                height: 1.6,
+                fontSize: 14,
+                height: 1.5,
               ),
             ),
-            const SizedBox(height: 34),
+            SizedBox(height: compact ? 22 : 30),
             Wrap(
               spacing: 16,
               runSpacing: 16,
@@ -372,8 +396,9 @@ class _Features extends StatelessWidget {
                   .map(
                     (f) => Container(
                       width: wide ? 260 : double.infinity,
-                      constraints: const BoxConstraints(minHeight: 150),
-                      padding: const EdgeInsets.all(20),
+                      constraints:
+                          BoxConstraints(minHeight: compact ? 118 : 138),
+                      padding: EdgeInsets.all(compact ? 15 : 18),
                       decoration: BoxDecoration(
                         color: AppTheme.surface,
                         borderRadius: BorderRadius.circular(18),
@@ -385,19 +410,19 @@ class _Features extends StatelessWidget {
                         children: [
                           const Icon(Icons.radio_button_checked,
                               color: AppTheme.gold, size: 20),
-                          const SizedBox(height: 14),
+                          SizedBox(height: compact ? 10 : 12),
                           Text(f.$1,
                               style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 15,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w800)),
                           const SizedBox(height: 8),
                           Text(
                             f.$2,
                             style: const TextStyle(
                               color: AppTheme.textMuted,
-                              fontSize: 13,
-                              height: 1.5,
+                              fontSize: 12,
+                              height: 1.42,
                             ),
                           ),
                         ],
@@ -414,9 +439,14 @@ class _Features extends StatelessWidget {
 }
 
 class _Roadmap extends StatelessWidget {
-  const _Roadmap({required this.lang, required this.wide});
+  const _Roadmap({
+    required this.lang,
+    required this.wide,
+    required this.compact,
+  });
   final Lang lang;
   final bool wide;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -429,7 +459,10 @@ class _Roadmap extends StatelessWidget {
     return Container(
       width: double.infinity,
       color: AppTheme.surface,
-      padding: EdgeInsets.symmetric(horizontal: wide ? 72 : 20, vertical: 84),
+      padding: EdgeInsets.symmetric(
+        horizontal: wide ? 72 : 18,
+        vertical: wide ? 74 : (compact ? 48 : 62),
+      ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1120),
         child: Column(
@@ -445,10 +478,10 @@ class _Roadmap extends StatelessWidget {
             Text(_t(lang, 'road_title'),
                 style: TextStyle(
                     color: Colors.white,
-                    fontSize: wide ? 38 : 28,
+                    fontSize: wide ? 36 : (compact ? 24 : 28),
                     fontWeight: FontWeight.w300,
                     height: 1.1)),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             Wrap(
               spacing: 16,
               runSpacing: 16,
@@ -456,7 +489,11 @@ class _Roadmap extends StatelessWidget {
                 for (var i = 0; i < steps.length; i++)
                   SizedBox(
                     width: wide ? 260 : double.infinity,
-                    child: _StepCard(index: i + 1, title: steps[i]),
+                    child: _StepCard(
+                      index: i + 1,
+                      title: steps[i],
+                      compact: compact,
+                    ),
                   ),
               ],
             ),
@@ -468,13 +505,18 @@ class _Roadmap extends StatelessWidget {
 }
 
 class _StepCard extends StatelessWidget {
-  const _StepCard({required this.index, required this.title});
+  const _StepCard({
+    required this.index,
+    required this.title,
+    required this.compact,
+  });
   final int index;
   final String title;
+  final bool compact;
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(compact ? 14 : 18),
       decoration: BoxDecoration(
         color: AppTheme.black,
         borderRadius: BorderRadius.circular(18),
@@ -484,8 +526,8 @@ class _StepCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 30,
-            height: 30,
+            width: compact ? 26 : 30,
+            height: compact ? 26 : 30,
             decoration: const BoxDecoration(
                 color: AppTheme.gold, shape: BoxShape.circle),
             alignment: Alignment.center,
@@ -507,14 +549,22 @@ class _StepCard extends StatelessWidget {
 }
 
 class _CTA extends StatelessWidget {
-  const _CTA({required this.lang, required this.wide});
+  const _CTA({
+    required this.lang,
+    required this.wide,
+    required this.compact,
+  });
   final Lang lang;
   final bool wide;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: wide ? 72 : 20, vertical: 84),
+      padding: EdgeInsets.symmetric(
+        horizontal: wide ? 72 : 18,
+        vertical: wide ? 74 : (compact ? 50 : 64),
+      ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 900),
         child: Column(
@@ -523,7 +573,7 @@ class _CTA extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: Colors.white,
-                    fontSize: wide ? 34 : 26,
+                    fontSize: wide ? 32 : (compact ? 23 : 26),
                     fontWeight: FontWeight.w300,
                     height: 1.1)),
             const SizedBox(height: 14),
@@ -532,18 +582,20 @@ class _CTA extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppTheme.textMuted,
-                fontSize: 15,
-                height: 1.6,
+                fontSize: 14,
+                height: 1.5,
               ),
             ),
-            const SizedBox(height: 28),
+            SizedBox(height: compact ? 20 : 26),
             FilledButton(
               onPressed: () => Navigator.of(context).pushNamed('/app'),
               style: FilledButton.styleFrom(
                   backgroundColor: AppTheme.gold,
                   foregroundColor: Colors.black,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: compact ? 22 : 26,
+                    vertical: compact ? 13 : 16,
+                  ),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(999))),
               child: Text(_t(lang, 'cta_app').toUpperCase()),
