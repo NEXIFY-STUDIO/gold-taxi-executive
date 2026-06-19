@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../config/brand_config.dart';
 import '../../theme/app_theme.dart';
 
 enum Lang { en, sk, de, es }
 
 class LandingPageScreen extends StatefulWidget {
-  const LandingPageScreen({super.key});
+  const LandingPageScreen({super.key, this.brand = const BrandConfig()});
+
+  final BrandConfig brand;
 
   @override
   State<LandingPageScreen> createState() => _LandingPageScreenState();
@@ -43,8 +46,13 @@ class _LandingPageScreenState extends State<LandingPageScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 88),
-                _TopNav(lang: lang, onLang: (v) => setState(() => lang = v)),
+                _TopNav(
+                  brand: widget.brand,
+                  lang: lang,
+                  onLang: (v) => setState(() => lang = v),
+                ),
                 _Hero(
+                  brand: widget.brand,
                   lang: lang,
                   wide: wide,
                   onPrimaryTap: () => Navigator.of(context).pushNamed('/app'),
@@ -57,7 +65,7 @@ class _LandingPageScreenState extends State<LandingPageScreen> {
                 ),
                 _Roadmap(lang: lang, wide: wide),
                 _CTA(lang: lang, wide: wide),
-                _Footer(lang: lang),
+                _Footer(brand: widget.brand, lang: lang),
               ],
             ),
           ),
@@ -97,8 +105,13 @@ class _GlowBg extends StatelessWidget {
 }
 
 class _TopNav extends StatelessWidget {
-  const _TopNav({required this.lang, required this.onLang});
+  const _TopNav({
+    required this.brand,
+    required this.lang,
+    required this.onLang,
+  });
 
+  final BrandConfig brand;
   final Lang lang;
   final ValueChanged<Lang> onLang;
 
@@ -115,17 +128,17 @@ class _TopNav extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'GoldTaxi',
-            style: TextStyle(
+          Text(
+            brand.displayName,
+            style: const TextStyle(
                 color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
           ),
           Wrap(
             spacing: 6,
             children: [
               _langChip('EN', Lang.en),
+              _langChip('DE', Lang.de),
               _langChip('SK', Lang.sk),
-              _langChip('DE-CH', Lang.de),
               _langChip('ES', Lang.es),
             ],
           ),
@@ -157,11 +170,13 @@ class _TopNav extends StatelessWidget {
 
 class _Hero extends StatelessWidget {
   const _Hero({
+    required this.brand,
     required this.lang,
     required this.wide,
     required this.onPrimaryTap,
     required this.onSecondaryTap,
   });
+  final BrandConfig brand;
   final Lang lang;
   final bool wide;
   final VoidCallback onPrimaryTap;
@@ -179,14 +194,14 @@ class _Hero extends StatelessWidget {
             _badge(_t(lang, 'hero_tag')),
             const SizedBox(height: 24),
             Text(
-              'GoldTaxi',
+              brand.displayName,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: wide ? 88 : 52,
                 height: .95,
                 fontWeight: FontWeight.w900,
-                letterSpacing: -1.5,
+                letterSpacing: 0,
               ),
             ),
             const SizedBox(height: 12),
@@ -197,7 +212,7 @@ class _Hero extends StatelessWidget {
                 color: AppTheme.gold,
                 fontSize: wide ? 18 : 12,
                 fontWeight: FontWeight.w800,
-                letterSpacing: 1.8,
+                letterSpacing: 0,
               ),
             ),
             const SizedBox(height: 22),
@@ -293,7 +308,7 @@ class _Stats extends StatelessWidget {
                                 color: Colors.white.withValues(alpha: .5),
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
-                                letterSpacing: 1.0)),
+                                letterSpacing: 0)),
                       ],
                     ),
                   ),
@@ -332,7 +347,7 @@ class _Features extends StatelessWidget {
                     color: AppTheme.gold,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: 1.5)),
+                    letterSpacing: 0)),
             const SizedBox(height: 12),
             Text(_t(lang, 'features_title'),
                 style: TextStyle(
@@ -425,7 +440,7 @@ class _Roadmap extends StatelessWidget {
                     color: AppTheme.gold,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: 1.5)),
+                    letterSpacing: 0)),
             const SizedBox(height: 12),
             Text(_t(lang, 'road_title'),
                 style: TextStyle(
@@ -541,14 +556,15 @@ class _CTA extends StatelessWidget {
 }
 
 class _Footer extends StatelessWidget {
-  const _Footer({required this.lang});
+  const _Footer({required this.brand, required this.lang});
+  final BrandConfig brand;
   final Lang lang;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 36),
-      child: Text(_t(lang, 'footer'),
+      child: Text('© 2026 ${brand.displayName} · ${_t(lang, 'footer_suffix')}',
           style: TextStyle(
               color: Colors.white.withValues(alpha: .35), fontSize: 12)),
     );
@@ -567,7 +583,7 @@ Widget _badge(String text) => Container(
               color: AppTheme.gold,
               fontSize: 10,
               fontWeight: FontWeight.w800,
-              letterSpacing: 1.2)),
+              letterSpacing: 0)),
     );
 
 String _t(Lang l, String key) => _dict[key]?[l] ?? _dict[key]?[Lang.en] ?? key;
@@ -802,10 +818,10 @@ const _dict = {
     Lang.es:
         'Diseñado para operadores premium con una entrada digital pulida y una ruta clara para crecer.',
   },
-  'footer': {
-    Lang.en: '© 2026 GoldTaxi · Premium mobility platform',
-    Lang.sk: '© 2026 GoldTaxi · Prémiová mobilná platforma',
-    Lang.de: '© 2026 GoldTaxi · Premium-Mobilitätsplattform',
-    Lang.es: '© 2026 GoldTaxi · Plataforma de movilidad premium',
+  'footer_suffix': {
+    Lang.en: 'Premium mobility platform',
+    Lang.sk: 'Prémiová mobilná platforma',
+    Lang.de: 'Premium-Mobilitätsplattform',
+    Lang.es: 'Plataforma de movilidad premium',
   },
 };

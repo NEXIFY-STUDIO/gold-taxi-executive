@@ -23,7 +23,7 @@ class _GoldTaxiAppState extends State<GoldTaxiApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       scaffoldMessengerKey: _scaffoldMessengerKey,
-      title: 'GoldTaxi v2.5',
+      title: widget.config.brand.appTitle,
       debugShowCheckedModeBanner: false,
       scrollBehavior: const GoldTaxiScrollBehavior(),
       theme: AppTheme.light(),
@@ -31,8 +31,8 @@ class _GoldTaxiAppState extends State<GoldTaxiApp> {
       themeMode: ThemeMode.dark,
       initialRoute: _initialRoute(),
       routes: {
-        '/': (context) => const LandingPageScreen(),
-        '/home': (context) => const LandingPageScreen(),
+        '/': (context) => LandingPageScreen(brand: widget.config.brand),
+        '/home': (context) => LandingPageScreen(brand: widget.config.brand),
         '/app': (context) => AppShellLoader(
               config: widget.config,
               scaffoldMessengerKey: _scaffoldMessengerKey,

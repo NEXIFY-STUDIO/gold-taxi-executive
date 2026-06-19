@@ -24,6 +24,19 @@ cp .env.production .env.production.development
 - `FIREBASE_WEB_VAPID_KEY` - From Firebase Console > Project Settings > Cloud Messaging > Web config
 - `BACKEND_MODE` - Set to `mock` for development, `firebase` for production
 
+### Whitelabel build labels
+These are public UI labels, not secrets. They can be passed through an env file
+or individual `--dart-define` flags:
+
+```bash
+flutter build web --release \
+  --dart-define-from-file=.env.production.deployment \
+  --dart-define=WHITELABEL_BRAND_NAME="Partner Taxi" \
+  --dart-define=WHITELABEL_OPERATOR_LABEL="Private chauffeur platform" \
+  --dart-define=WHITELABEL_MARKET_LABEL="Swiss premium mobility" \
+  --dart-define=WHITELABEL_POWERED_BY="Powered by GoldTaxi"
+```
+
 ## Lokálne spustenie
 
 ```bash

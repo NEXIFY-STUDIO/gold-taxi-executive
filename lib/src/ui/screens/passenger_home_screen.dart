@@ -74,9 +74,25 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
         return Scaffold(
           extendBodyBehindAppBar: true,
           appBar: AppBar(
-            title: const Text(
-              'GoldTaxi',
-              style: TextStyle(fontWeight: FontWeight.w900),
+            title: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  state.config.brand.displayName,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                Text(
+                  state.config.brand.displayMarketLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
             actions: [
               Padding(
@@ -109,28 +125,51 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                 ),
               ),
               DraggableScrollableSheet(
-                initialChildSize: state.activeRide == null ? .52 : .42,
-                minChildSize: .28,
-                maxChildSize: .86,
+                initialChildSize: state.activeRide == null ? .56 : .42,
+                minChildSize: .34,
+                maxChildSize: .92,
                 builder: (context, controller) {
-                  return SingleChildScrollView(
-                    controller: controller,
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-                    child: _state.activeRide == null
-                        ? _BookingPanel(
-                            pickupController: _pickupController,
-                            dropoffController: _dropoffController,
-                            mapsProviderName: _mapsService.providerName,
-                            routePreview: _routePreview,
-                            mapsError: _mapsError,
-                            pickupSuggestions: _pickupSuggestions,
-                            dropoffSuggestions: _dropoffSuggestions,
-                            onPickupSuggestionSelected: _selectPickupSuggestion,
-                            onDropoffSuggestionSelected:
-                                _selectDropoffSuggestion,
-                            onRefreshRoute: _queueRoutePreview,
-                          )
-                        : _ActiveRidePanel(ride: _state.activeRide!),
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final horizontalPadding =
+                          constraints.maxWidth >= 760 ? 24.0 : 16.0;
+
+                      return SingleChildScrollView(
+                        controller: controller,
+                        padding: EdgeInsets.fromLTRB(
+                          horizontalPadding,
+                          0,
+                          horizontalPadding,
+                          18,
+                        ),
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 780),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: _state.activeRide == null
+                                  ? _BookingPanel(
+                                      pickupController: _pickupController,
+                                      dropoffController: _dropoffController,
+                                      mapsProviderName:
+                                          _mapsService.providerName,
+                                      routePreview: _routePreview,
+                                      mapsError: _mapsError,
+                                      pickupSuggestions: _pickupSuggestions,
+                                      dropoffSuggestions: _dropoffSuggestions,
+                                      onPickupSuggestionSelected:
+                                          _selectPickupSuggestion,
+                                      onDropoffSuggestionSelected:
+                                          _selectDropoffSuggestion,
+                                      onRefreshRoute: _queueRoutePreview,
+                                    )
+                                  : _ActiveRidePanel(ride: _state.activeRide!),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
@@ -253,9 +292,30 @@ class _BookingPanel extends StatelessWidget {
               ),
             ),
           ),
-          const Text(
-            'Book your ride',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Expanded(
+                child: Text(
+                  'Book your ride',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  state.config.brand.displayPoweredBy,
+                  textAlign: TextAlign.end,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -282,6 +342,8 @@ class _BookingPanel extends StatelessWidget {
                 ),
             ],
           ),
+          const SizedBox(height: 14),
+          _TripSummaryBar(routePreview: routePreview),
           if (mapsError != null) ...[
             const SizedBox(height: 10),
             Text(
@@ -289,9 +351,9 @@ class _BookingPanel extends StatelessWidget {
               style: TextStyle(color: Colors.white.withValues(alpha: .7)),
             ),
           ],
-          const SizedBox(height: 14),
-          const _AccountPanel(),
           const SizedBox(height: 12),
+          const _AccountPanel(),
+          const SizedBox(height: 14),
           TextField(
             controller: pickupController,
             onChanged: state.updatePickupLabel,
@@ -314,19 +376,25 @@ class _BookingPanel extends StatelessWidget {
               labelText: 'Drop-off point',
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           _SuggestionList(
             suggestions: dropoffSuggestions,
             onTap: onDropoffSuggestionSelected,
           ),
-          const SizedBox(height: 14),
-          const Text(
-            'Vehicle tier',
-            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+          const SizedBox(height: 16),
+          const Row(
+            children: [
+              Icon(Icons.directions_car_filled_rounded,
+                  size: 18, color: AppTheme.gold),
+              SizedBox(width: 8),
+              Text(
+                'Vehicle tier',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          for (final vehicleClass in VehicleClass.values)
-            _VehicleClassTile(vehicleClass: vehicleClass),
+          const _VehicleClassStrip(),
           const SizedBox(height: 12),
           if (state.error != null)
             Padding(
@@ -367,73 +435,177 @@ class _AccountPanel extends StatelessWidget {
     final isGuest = state.isGuestSession;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: .04),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.white.withValues(alpha: .08)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(
-                isGuest
-                    ? Icons.person_outline_rounded
-                    : Icons.verified_user_rounded,
-                color: isGuest ? AppTheme.textMuted : AppTheme.gold,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      state.accountLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                    Text(
-                      isGuest ? 'Guest checkout' : 'Google account',
-                      style: const TextStyle(
-                        color: AppTheme.textMuted,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+          Icon(
+            isGuest
+                ? Icons.person_outline_rounded
+                : Icons.verified_user_rounded,
+            color: isGuest ? AppTheme.textMuted : AppTheme.gold,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  state.accountLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
+                Text(
+                  isGuest ? 'Guest checkout' : 'Google account',
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          isGuest
+              ? OutlinedButton.icon(
+                  onPressed:
+                      state.isAuthActionLoading ? null : state.signInWithGoogle,
+                  icon: state.isAuthActionLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.login_rounded),
+                  label: const Text('Sign in with Google'),
+                )
+              : TextButton.icon(
+                  onPressed:
+                      state.isAuthActionLoading ? null : state.continueAsGuest,
+                  icon: const Icon(Icons.person_outline_rounded),
+                  label: const Text('Guest'),
+                ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TripSummaryBar extends StatelessWidget {
+  const _TripSummaryBar({required this.routePreview});
+
+  final RoutePolyline? routePreview;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppStateScope.of(context);
+    final estimate = state.estimateFor(state.selectedClass);
+    final distanceLabel = routePreview == null
+        ? '${estimate.distanceKm.toStringAsFixed(1)} km'
+        : '${routePreview!.distanceKm.toStringAsFixed(1)} km';
+    final timeLabel = routePreview == null
+        ? '${estimate.durationMinutes} min'
+        : '${routePreview!.durationMinutes} min';
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: .22),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: .08)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: _RouteMetric(
+                icon: Icons.route_rounded,
+                label: 'Route',
+                value: distanceLabel,
+              ),
+            ),
+            _SummaryDivider(),
+            Expanded(
+              child: _RouteMetric(
+                icon: Icons.schedule_rounded,
+                label: 'ETA',
+                value: timeLabel,
+              ),
+            ),
+            _SummaryDivider(),
+            Expanded(
+              child: _RouteMetric(
+                icon: Icons.payments_rounded,
+                label: 'Fare',
+                value: 'CHF ${estimate.amount.toStringAsFixed(2)}',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 34,
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      color: Colors.white.withValues(alpha: .08),
+    );
+  }
+}
+
+class _RouteMetric extends StatelessWidget {
+  const _RouteMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: AppTheme.gold, size: 18),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppTheme.textMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w900),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: isGuest
-                ? OutlinedButton.icon(
-                    onPressed: state.isAuthActionLoading
-                        ? null
-                        : state.signInWithGoogle,
-                    icon: state.isAuthActionLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.login_rounded),
-                    label: const Text('Sign in with Google'),
-                  )
-                : TextButton.icon(
-                    onPressed: state.isAuthActionLoading
-                        ? null
-                        : state.continueAsGuest,
-                    icon: const Icon(Icons.person_outline_rounded),
-                    label: const Text('Use guest mode'),
-                  ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -478,6 +650,29 @@ class _SuggestionList extends StatelessWidget {
   }
 }
 
+class _VehicleClassStrip extends StatelessWidget {
+  const _VehicleClassStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 102,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        itemCount: VehicleClass.values.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          return SizedBox(
+            width: 258,
+            child: _VehicleClassTile(vehicleClass: VehicleClass.values[index]),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _VehicleClassTile extends StatelessWidget {
   const _VehicleClassTile({required this.vehicleClass});
 
@@ -490,7 +685,7 @@ class _VehicleClassTile extends StatelessWidget {
     final selected = state.selectedClass == vehicleClass;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 6),
       child: InkWell(
         onTap: () => state.setSelectedClass(vehicleClass),
         borderRadius: BorderRadius.circular(20),
@@ -525,6 +720,8 @@ class _VehicleClassTile extends StatelessWidget {
                   children: [
                     Text(
                       vehicleClass.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 15,
@@ -532,6 +729,8 @@ class _VehicleClassTile extends StatelessWidget {
                     ),
                     Text(
                       '${vehicleClass.description} · ${estimate.durationMinutes} min',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: AppTheme.textMuted),
                     ),
                   ],
@@ -539,6 +738,8 @@ class _VehicleClassTile extends StatelessWidget {
               ),
               Text(
                 'CHF ${estimate.amount.toStringAsFixed(2)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: vehicleClass.accentColor,
                   fontWeight: FontWeight.w900,

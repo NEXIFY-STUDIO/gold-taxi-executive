@@ -54,6 +54,30 @@ Legenda:
 
 ---
 
+## P1.8 — Whitelabel UI/UX polish checkpoint
+
+Aktualizované: 2026-06-19 18:58 CEST
+
+- [x] pridaný verejný `BrandConfig` pre whitelabel názov, market label a powered-by text
+- [x] landing a passenger shell používajú brand config namiesto hardcoded titulku v route title/nav/appbar
+- [x] language switcher zjednotený na `EN / DE / SK / ES`
+- [x] passenger booking panel obmedzený na profesionálnu max šírku na desktope
+- [x] pridaný trip summary bar pre route, ETA a fare
+- [x] vehicle tier selector upravený na horizontálny showroom pás
+- [x] account panel skompaktnený pre guest/Google sign-in flow
+- [x] web shell spevnený proti horizontálnemu browser overscrollu
+- [x] README doplnené o whitelabel `--dart-define` premenné
+
+**Verification:**
+
+- `flutter analyze` ✅ PASS
+- `flutter test` ✅ PASS (41/41)
+- `flutter build web --release --dart-define-from-file=.env.production.deployment` ✅ PASS
+- lokálny build server: `http://localhost:54821` ✅
+- `curl -I /`, `/manifest.json`, `/offline.html` na lokálnom builde ✅ 200
+
+---
+
 ## P1.7 — Firebase hosting hardening
 
 - [x] overiť SPA rewrites (`firebase.json` rewrite `** -> /index.html`)
