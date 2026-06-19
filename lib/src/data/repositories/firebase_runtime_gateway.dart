@@ -7,6 +7,7 @@ import '../../models/app_user_role.dart';
 import '../../services/auth/auth_gateway.dart';
 import '../../services/auth/firebase_auth_gateway.dart';
 import '../models/driver.dart';
+import '../models/driver_approval.dart';
 import '../models/location_point.dart';
 import '../models/ride.dart';
 import '../models/vehicle_class.dart';
@@ -43,6 +44,8 @@ abstract class FirebaseRuntimeGateway {
   Future<void> cancelRide(String rideId, String reason);
 
   Future<void> adminCancelRide(String rideId, String reason);
+
+  Future<String> approveDriver(DriverApprovalInput input);
 
   Future<void> setDriverOnline(bool online);
 }
@@ -254,6 +257,19 @@ class FirebaseRuntimeGatewayImpl implements FirebaseRuntimeGateway {
       'rideId': rideId,
       'reason': reason,
     });
+  }
+
+  @override
+  Future<String> approveDriver(DriverApprovalInput input) async {
+    _ensureInitialized();
+    final response =
+        await _functions.httpsCallable('approveDriver').call(input.toJson());
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final driverId = data['driverId']?.toString();
+    if (driverId == null || driverId.isEmpty) {
+      throw StateError('approveDriver returned no driverId.');
+    }
+    return driverId;
   }
 
   @override

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
 import '../data/models/driver.dart';
+import '../data/models/driver_approval.dart';
 import '../data/models/location_point.dart';
 import '../data/models/ride.dart';
 import '../data/models/vehicle_class.dart';
@@ -59,6 +60,7 @@ class AppState extends ChangeNotifier {
   Ride? activeRide;
   bool isLoading = false;
   bool isAuthActionLoading = false;
+  bool isProvisioningDriver = false;
   bool driverOnline = false;
   int driverOfferSecondsRemaining = 0;
   int completedTrips = 0;
@@ -290,6 +292,25 @@ class AppState extends ChangeNotifier {
     await adminCancelRide(ride);
     opsNotice = 'Ride ${ride.id} resolved by ops.';
     notifyListeners();
+  }
+
+  Future<void> approveDriver(DriverApprovalInput input) async {
+    if (!_requireOpsRole() || isProvisioningDriver) return;
+    isProvisioningDriver = true;
+    error = null;
+    opsNotice = null;
+    notifyListeners();
+
+    try {
+      final driverId = await _repository.approveDriver(input);
+      opsNotice =
+          '${input.name.trim()} approved as driver · ${input.vehicleLabel.trim()} · ${input.licensePlate.trim().toUpperCase()} · $driverId';
+    } catch (exception) {
+      error = exception.toString();
+    } finally {
+      isProvisioningDriver = false;
+      notifyListeners();
+    }
   }
 
   void clearCompletedRide() {

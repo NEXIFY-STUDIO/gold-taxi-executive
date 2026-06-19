@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../data/models/driver.dart';
+import '../../data/models/driver_approval.dart';
 import '../../data/models/ride.dart';
+import '../../data/models/vehicle_class.dart';
 import '../../state/app_state.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/glass_panel.dart';
@@ -161,6 +163,8 @@ class AdminDashboardScreen extends StatelessWidget {
                         ),
                       ),
                     const Divider(height: 32, color: Colors.white12),
+                    const _DriverProvisioningPanel(),
+                    const Divider(height: 32, color: Colors.white12),
                     const Text(
                       'Ride control',
                       style:
@@ -235,6 +239,215 @@ class AdminDashboardScreen extends StatelessWidget {
       },
     );
   }
+}
+
+class _DriverProvisioningPanel extends StatefulWidget {
+  const _DriverProvisioningPanel();
+
+  @override
+  State<_DriverProvisioningPanel> createState() =>
+      _DriverProvisioningPanelState();
+}
+
+class _DriverProvisioningPanelState extends State<_DriverProvisioningPanel> {
+  final _uidController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _vehicleController = TextEditingController(text: 'Mercedes S-Class');
+  final _plateController = TextEditingController();
+  VehicleClass _vehicleClass = VehicleClass.premium;
+
+  @override
+  void dispose() {
+    _uidController.dispose();
+    _nameController.dispose();
+    _phoneController.dispose();
+    _vehicleController.dispose();
+    _plateController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppStateScope.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Driver approvals',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Approve a registered passenger UID and create their driver profile.',
+          style: TextStyle(color: AppTheme.textMuted),
+        ),
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final twoColumns = constraints.maxWidth >= 720;
+            final fields = [
+              _ProvisioningField(
+                controller: _uidController,
+                label: 'Passenger UID',
+                icon: Icons.verified_user_rounded,
+              ),
+              _ProvisioningField(
+                controller: _nameController,
+                label: 'Driver name',
+                icon: Icons.badge_rounded,
+              ),
+              _ProvisioningField(
+                controller: _phoneController,
+                label: 'Phone',
+                icon: Icons.phone_rounded,
+                keyboardType: TextInputType.phone,
+              ),
+              _ProvisioningField(
+                controller: _vehicleController,
+                label: 'Vehicle label',
+                icon: Icons.local_taxi_rounded,
+              ),
+              _ProvisioningField(
+                controller: _plateController,
+                label: 'License plate',
+                icon: Icons.confirmation_number_rounded,
+                textCapitalization: TextCapitalization.characters,
+              ),
+              DropdownButtonFormField<VehicleClass>(
+                initialValue: _vehicleClass,
+                decoration: _fieldDecoration(
+                  'Vehicle class',
+                  Icons.workspace_premium_rounded,
+                ),
+                dropdownColor: const Color(0xFF151611),
+                borderRadius: BorderRadius.circular(14),
+                items: VehicleClass.values
+                    .map(
+                      (value) => DropdownMenuItem<VehicleClass>(
+                        value: value,
+                        child: Text(value.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: state.isProvisioningDriver
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        setState(() => _vehicleClass = value);
+                      },
+              ),
+            ];
+
+            if (!twoColumns) {
+              return Column(
+                children: [
+                  for (final field in fields) ...[
+                    field,
+                    const SizedBox(height: 10),
+                  ],
+                ],
+              );
+            }
+
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: fields
+                  .map(
+                    (field) => SizedBox(
+                      width: (constraints.maxWidth - 12) / 2,
+                      child: field,
+                    ),
+                  )
+                  .toList(),
+            );
+          },
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed:
+                state.isProvisioningDriver ? null : () => _submit(context),
+            icon: state.isProvisioningDriver
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.how_to_reg_rounded),
+            label: Text(
+              state.isProvisioningDriver ? 'Approving...' : 'Approve driver',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _submit(BuildContext context) {
+    final state = AppStateScope.of(context);
+    state.approveDriver(
+      DriverApprovalInput(
+        targetUid: _uidController.text,
+        name: _nameController.text,
+        phone: _phoneController.text,
+        vehicleLabel: _vehicleController.text,
+        licensePlate: _plateController.text,
+        vehicleClass: _vehicleClass,
+      ),
+    );
+  }
+}
+
+class _ProvisioningField extends StatelessWidget {
+  const _ProvisioningField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.keyboardType,
+    this.textCapitalization = TextCapitalization.none,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final TextCapitalization textCapitalization;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      textCapitalization: textCapitalization,
+      decoration: _fieldDecoration(label, icon),
+    );
+  }
+}
+
+InputDecoration _fieldDecoration(String label, IconData icon) {
+  return InputDecoration(
+    labelText: label,
+    prefixIcon: Icon(icon, size: 19),
+    isDense: true,
+    filled: true,
+    fillColor: Colors.white.withValues(alpha: .045),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: Colors.white12),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: Colors.white12),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: AppTheme.gold),
+    ),
+  );
 }
 
 Ride? _firstRide(List<Ride> rides) {

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:goldtaxi_bolt_v2_5/src/config/app_config.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/driver.dart';
+import 'package:goldtaxi_bolt_v2_5/src/data/models/driver_approval.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/location_point.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/ride.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/vehicle_class.dart';
@@ -73,6 +74,10 @@ class _TrackingRideRepository implements RideRepository {
 
   @override
   Future<void> adminCancelRide(String rideId, String reason) async {}
+
+  @override
+  Future<String> approveDriver(DriverApprovalInput input) async =>
+      'driver-approved';
 
   @override
   Future<void> setDriverOnline(bool online) async {}

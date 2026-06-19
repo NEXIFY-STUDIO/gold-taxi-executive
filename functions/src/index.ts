@@ -1,8 +1,10 @@
 import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { getMessaging } from 'firebase-admin/messaging';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { approveDriverForUser } from './driver_provisioning';
 import { setRoleResolver, requireAdmin, requireDriver, ensureAuth, readUserRole, RoleResolver } from './roles';
 
 initializeApp();
@@ -362,6 +364,51 @@ export const bootstrapDriverProfile = onCall({ region: REGION }, async (request)
   });
 
   return { uid, driverId: driverRef.id };
+});
+
+export const approveDriver = onCall({ region: REGION }, async (request) => {
+  await requireAdmin(request);
+  const actorUid = ensureAuth(request);
+
+  return approveDriverForUser({
+    actorUid,
+    data: request.data,
+    deps: {
+      readUserRole,
+      getAuthUser: async (uid: string) => {
+        try {
+          const user = await getAuth().getUser(uid);
+          return {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            customClaims: user.customClaims,
+          };
+        } catch {
+          return null;
+        }
+      },
+      setCustomUserClaims: (uid: string, claims: Record<string, unknown>) =>
+        getAuth().setCustomUserClaims(uid, claims),
+      findDriverByUserId: async (uid: string) => {
+        const snap = await db.collection('drivers').where('userId', '==', uid).limit(1).get();
+        if (snap.empty) return null;
+        return {
+          id: snap.docs[0].id,
+          data: snap.docs[0].data(),
+        };
+      },
+      setUserProfile: async (uid: string, data: Record<string, unknown>) => {
+        await db.doc(`users/${uid}`).set(data, { merge: true });
+      },
+      setDriverProfile: async (driverId: string | null, data: Record<string, unknown>) => {
+        const driverRef = driverId ? db.doc(`drivers/${driverId}`) : db.collection('drivers').doc();
+        await driverRef.set(data, { merge: true });
+        return driverRef.id;
+      },
+      now: () => FieldValue.serverTimestamp(),
+    },
+  });
 });
 
 export const setDriverOnline = onCall({ region: REGION }, async (request) => {

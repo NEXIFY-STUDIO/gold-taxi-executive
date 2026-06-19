@@ -1,6 +1,7 @@
 import '../../models/app_user_role.dart';
 import '../../services/auth/auth_gateway.dart';
 import '../models/driver.dart';
+import '../models/driver_approval.dart';
 import '../models/location_point.dart';
 import '../models/ride.dart';
 import '../models/vehicle_class.dart';
@@ -68,6 +69,10 @@ class FirebaseRideRepository implements RideRepository {
   @override
   Future<void> adminCancelRide(String rideId, String reason) =>
       _gateway.adminCancelRide(rideId, reason);
+
+  @override
+  Future<String> approveDriver(DriverApprovalInput input) =>
+      _gateway.approveDriver(input);
 
   @override
   Future<void> setDriverOnline(bool online) => _gateway.setDriverOnline(online);
