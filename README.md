@@ -67,6 +67,14 @@ flutter build web --release --dart-define-from-file=.env.production
 firebase deploy --only hosting
 ```
 
+## Production Google Auth smoke
+
+This opens Chrome and requires a real account selection by the tester:
+
+```bash
+bash scripts/google_auth_manual_smoke.sh
+```
+
 ## Legacy backend schema
 
 `database/supabase_schema.sql` zostáva ako dokumentácia pre prípadný neskorší backend export, ale appka už Supabase nepoužíva v runtime.
