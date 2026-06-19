@@ -10,7 +10,75 @@ const screenshotPath =
 
 function relevantFailedRequests(requests) {
   return requests.filter((request) => {
-    return !request.url.includes('/assets/FontManifest.json');
+    if (request.url.includes('/assets/FontManifest.json')) {
+      return false;
+    }
+    if (
+      request.url.includes('firestore.googleapis.com') &&
+      request.url.includes('/Listen/channel') &&
+      request.failure === 'net::ERR_ABORTED'
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
+async function detectFirebaseAuth(page) {
+  return page.evaluate(async () => {
+    if (!('indexedDB' in window) || !indexedDB.databases) {
+      return { checked: false, signedIn: false, providerIds: [] };
+    }
+
+    const databases = await indexedDB.databases();
+    const authDb = databases.find((db) => db.name === 'firebaseLocalStorageDb');
+    if (!authDb?.name) {
+      return { checked: true, signedIn: false, providerIds: [] };
+    }
+
+    return new Promise((resolve) => {
+      const request = indexedDB.open(authDb.name);
+      request.onerror = () =>
+        resolve({ checked: true, signedIn: false, providerIds: [] });
+      request.onsuccess = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('firebaseLocalStorage')) {
+          db.close();
+          resolve({ checked: true, signedIn: false, providerIds: [] });
+          return;
+        }
+
+        const transaction = db.transaction('firebaseLocalStorage', 'readonly');
+        const store = transaction.objectStore('firebaseLocalStorage');
+        const getAll = store.getAll();
+        getAll.onerror = () => {
+          db.close();
+          resolve({ checked: true, signedIn: false, providerIds: [] });
+        };
+        getAll.onsuccess = () => {
+          const providerIds = new Set();
+          let signedIn = false;
+          for (const entry of getAll.result || []) {
+            const value = entry?.value;
+            const providers = value?.providerData || [];
+            for (const provider of providers) {
+              if (provider?.providerId) {
+                providerIds.add(provider.providerId);
+              }
+            }
+            if (providers.length > 0 || value?.uid) {
+              signedIn = true;
+            }
+          }
+          db.close();
+          resolve({
+            checked: true,
+            signedIn,
+            providerIds: Array.from(providerIds),
+          });
+        };
+      };
+    });
   });
 }
 
@@ -87,6 +155,7 @@ async function main() {
         document.querySelector('[data-flutter-view]'),
     ),
   }));
+  const authState = await detectFirebaseAuth(page);
 
   const failedRequests = relevantFailedRequests(diagnostics.failedRequests);
   const failures = [];
@@ -98,6 +167,9 @@ async function main() {
   }
   if (!renderState.hasFlutterView) {
     failures.push('Flutter view is not rendered.');
+  }
+  if (authState.checked && !authState.signedIn) {
+    failures.push('Firebase Auth still has no signed-in user after the manual step.');
   }
   if (diagnostics.consoleErrors.length > 0) {
     failures.push(`Console errors: ${diagnostics.consoleErrors.join(' | ')}`);
@@ -114,6 +186,10 @@ async function main() {
 
   console.log('');
   console.log(`Final URL: ${renderState.href}`);
+  console.log(`Firebase Auth signed in: ${authState.checked ? authState.signedIn : 'not checked'}`);
+  if (authState.providerIds.length > 0) {
+    console.log(`Auth providers: ${authState.providerIds.join(', ')}`);
+  }
   console.log(`Screenshot: ${screenshotPath}`);
 
   await browser.close();
