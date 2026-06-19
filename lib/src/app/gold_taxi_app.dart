@@ -28,8 +28,9 @@ class _GoldTaxiAppState extends State<GoldTaxiApp> {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.dark,
-      home: const LandingPageScreen(),
+      initialRoute: _initialRoute(),
       routes: {
+        '/': (context) => const LandingPageScreen(),
         '/home': (context) => const LandingPageScreen(),
         '/app': (context) => AppShellLoader(
               config: widget.config,
@@ -37,5 +38,10 @@ class _GoldTaxiAppState extends State<GoldTaxiApp> {
             ),
       },
     );
+  }
+
+  String _initialRoute() {
+    final route = WidgetsBinding.instance.platformDispatcher.defaultRouteName;
+    return route == '/' || route.isEmpty ? '/' : route;
   }
 }
