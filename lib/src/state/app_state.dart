@@ -60,6 +60,9 @@ class AppState extends ChangeNotifier {
   Ride? activeRide;
   bool isLoading = false;
   bool isAuthActionLoading = false;
+  bool isSubmittingDriverApplication = false;
+  bool isLoadingDriverApplications = false;
+  bool isReviewingDriverApplication = false;
   bool isProvisioningDriver = false;
   bool driverOnline = false;
   int driverOfferSecondsRemaining = 0;
@@ -68,6 +71,8 @@ class AppState extends ChangeNotifier {
   int shellIndex = 0;
   String? error;
   String? opsNotice;
+  String? driverApplicationNotice;
+  List<DriverApplication> driverApplications = [];
 
   StreamSubscription<List<Driver>>? _driverSubscription;
   StreamSubscription<Ride>? _rideSubscription;
@@ -294,6 +299,90 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> submitDriverApplication(DriverApplicationInput input) async {
+    if (isSubmittingDriverApplication) return;
+    if (userRole != AppUserRole.passenger) {
+      error = 'Passenger role required.';
+      notifyListeners();
+      return;
+    }
+
+    isSubmittingDriverApplication = true;
+    error = null;
+    driverApplicationNotice = null;
+    notifyListeners();
+
+    try {
+      final applicationId = await _repository.submitDriverApplication(input);
+      driverApplicationNotice =
+          'Driver request sent for review · $applicationId';
+    } catch (exception) {
+      error = exception.toString();
+    } finally {
+      isSubmittingDriverApplication = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadDriverApplications() async {
+    if (!_requireOpsRole() || isLoadingDriverApplications) return;
+    isLoadingDriverApplications = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      driverApplications = await _repository.loadDriverApplications();
+    } catch (exception) {
+      error = exception.toString();
+    } finally {
+      isLoadingDriverApplications = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> approveDriverApplication(DriverApplication application) async {
+    if (!_requireOpsRole() || isReviewingDriverApplication) return;
+    isReviewingDriverApplication = true;
+    error = null;
+    opsNotice = null;
+    notifyListeners();
+
+    try {
+      final driverId =
+          await _repository.approveDriverApplication(application.id);
+      opsNotice =
+          '${application.fullName} approved as driver · ${application.vehicleLabel} · ${application.licensePlate} · $driverId';
+      await _refreshDriverApplicationsAfterDecision();
+    } catch (exception) {
+      error = exception.toString();
+    } finally {
+      isReviewingDriverApplication = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> rejectDriverApplication(
+    DriverApplication application, {
+    String reason = 'Rejected by operations',
+  }) async {
+    if (!_requireOpsRole() || isReviewingDriverApplication) return;
+    isReviewingDriverApplication = true;
+    error = null;
+    opsNotice = null;
+    notifyListeners();
+
+    try {
+      await _repository.rejectDriverApplication(application.id, reason);
+      opsNotice = '${application.fullName} driver request rejected.';
+      await _refreshDriverApplicationsAfterDecision();
+    } catch (exception) {
+      error = exception.toString();
+    } finally {
+      isReviewingDriverApplication = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> approveDriver(DriverApprovalInput input) async {
     if (!_requireOpsRole() || isProvisioningDriver) return;
     isProvisioningDriver = true;
@@ -412,6 +501,14 @@ class AppState extends ChangeNotifier {
       shellIndex = 0;
     }
     await _onAuthChanged?.call();
+  }
+
+  Future<void> _refreshDriverApplicationsAfterDecision() async {
+    try {
+      driverApplications = await _repository.loadDriverApplications();
+    } catch (_) {
+      // Keep the successful decision visible even if a follow-up refresh fails.
+    }
   }
 
   @override

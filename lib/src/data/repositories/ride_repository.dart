@@ -30,6 +30,21 @@ abstract class RideRepository {
   Future<void> adminCancelRide(String rideId, String reason) =>
       cancelRide(rideId, reason);
 
+  Future<String> submitDriverApplication(DriverApplicationInput input) =>
+      throw UnimplementedError('Driver applications are not available.');
+
+  Future<List<DriverApplication>> loadDriverApplications() async => const [];
+
+  Future<String> approveDriverApplication(String applicationId) =>
+      throw UnimplementedError('Driver request approval is not available.');
+
+  Future<void> rejectDriverApplication(
+    String applicationId,
+    String reason,
+  ) async {
+    throw UnimplementedError('Driver request rejection is not available.');
+  }
+
   Future<String> approveDriver(DriverApprovalInput input) =>
       throw UnimplementedError('Admin driver provisioning is not available.');
 
