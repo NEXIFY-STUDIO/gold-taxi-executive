@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../config/app_config.dart';
@@ -35,6 +36,10 @@ class MapsServiceFactory {
       return const MockMapsService();
     }
 
+    if (kIsWeb) {
+      return const BrowserSafeGoogleMapsService();
+    }
+
     return ResilientMapsService(
       primary: GoogleHttpMapsService(apiKey: effectiveKey),
       fallback: const MockMapsService(),
@@ -53,6 +58,10 @@ class MapsServiceFactory {
 
     if (effectiveKey.isEmpty) {
       return const MockMapsService();
+    }
+
+    if (kIsWeb) {
+      return const BrowserSafeGoogleMapsService();
     }
 
     return ResilientMapsService(
@@ -93,6 +102,28 @@ class ResilientMapsService implements MapsService {
     } catch (_) {
       return fallback.routeBetween(origin, destination);
     }
+  }
+}
+
+class BrowserSafeGoogleMapsService implements MapsService {
+  const BrowserSafeGoogleMapsService();
+
+  static const _fallback = MockMapsService();
+
+  @override
+  String get providerName => 'Google Maps';
+
+  @override
+  Stream<List<PlacePrediction>> autocomplete(String query) {
+    return _fallback.autocomplete(query);
+  }
+
+  @override
+  Future<RoutePolyline> routeBetween(
+    LocationPoint origin,
+    LocationPoint destination,
+  ) {
+    return _fallback.routeBetween(origin, destination);
   }
 }
 
