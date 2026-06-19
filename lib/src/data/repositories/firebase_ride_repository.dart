@@ -1,5 +1,7 @@
 import '../../models/app_user_role.dart';
+import '../../services/auth/auth_gateway.dart';
 import '../models/driver.dart';
+import '../models/driver_approval.dart';
 import '../models/location_point.dart';
 import '../models/ride.dart';
 import '../models/vehicle_class.dart';
@@ -9,13 +11,19 @@ import 'ride_repository.dart';
 class FirebaseRideRepository implements RideRepository {
   FirebaseRideRepository({
     FirebaseRuntimeGateway? gateway,
-  }) : _gateway = gateway ?? FirebaseRuntimeGatewayImpl();
+    GoldTaxiAuthGateway? authGateway,
+  }) : _gateway =
+            gateway ?? FirebaseRuntimeGatewayImpl(authGateway: authGateway);
 
   final FirebaseRuntimeGateway _gateway;
 
   Future<void> initialize() => _gateway.initialize();
 
   AppUserRole get userRole => _gateway.userRole;
+
+  AuthProfile? get authProfile => _gateway.authProfile;
+
+  Future<AppUserRole> refreshUserProfile() => _gateway.refreshUserProfile();
 
   @override
   Stream<List<Driver>> nearbyDrivers(LocationPoint center) {
@@ -61,6 +69,10 @@ class FirebaseRideRepository implements RideRepository {
   @override
   Future<void> adminCancelRide(String rideId, String reason) =>
       _gateway.adminCancelRide(rideId, reason);
+
+  @override
+  Future<String> approveDriver(DriverApprovalInput input) =>
+      _gateway.approveDriver(input);
 
   @override
   Future<void> setDriverOnline(bool online) => _gateway.setDriverOnline(online);

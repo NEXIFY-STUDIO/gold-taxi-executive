@@ -1,4 +1,5 @@
 import '../models/driver.dart';
+import '../models/driver_approval.dart';
 import '../models/location_point.dart';
 import '../models/ride.dart';
 import '../models/vehicle_class.dart';
@@ -28,6 +29,9 @@ abstract class RideRepository {
 
   Future<void> adminCancelRide(String rideId, String reason) =>
       cancelRide(rideId, reason);
+
+  Future<String> approveDriver(DriverApprovalInput input) =>
+      throw UnimplementedError('Admin driver provisioning is not available.');
 
   Future<void> setDriverOnline(bool online) async {}
 

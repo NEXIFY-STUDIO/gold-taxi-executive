@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:goldtaxi_bolt_v2_5/src/config/app_config.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/driver.dart';
+import 'package:goldtaxi_bolt_v2_5/src/data/models/driver_approval.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/location_point.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/ride.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/vehicle_class.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/repositories/ride_repository.dart';
 import 'package:goldtaxi_bolt_v2_5/src/models/app_user_role.dart';
+import 'package:goldtaxi_bolt_v2_5/src/services/auth/auth_gateway.dart';
 import 'package:goldtaxi_bolt_v2_5/src/services/push/client_profile_repository.dart';
 import 'package:goldtaxi_bolt_v2_5/src/services/push/push_notification_service.dart';
 import 'package:goldtaxi_bolt_v2_5/src/state/app_state.dart';
@@ -27,6 +29,21 @@ void main() {
     expect(find.text('Driver'), findsNothing);
     expect(find.text('Ops'), findsNothing);
     expect(find.text('Book your ride'), findsOneWidget);
+  });
+
+  testWidgets('passenger auth panel offers Google without privileged tabs',
+      (tester) async {
+    final harness = await _pumpShell(
+      tester,
+      role: AppUserRole.passenger,
+      authGateway: _ShellAuthGateway(),
+    );
+
+    addTearDown(harness.dispose);
+
+    expect(find.text('Sign in with Google'), findsOneWidget);
+    expect(find.text('Driver'), findsNothing);
+    expect(find.text('Ops'), findsNothing);
   });
 
   testWidgets('driver sees driver navigation but not ops', (tester) async {
@@ -63,18 +80,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Live operations'), findsOneWidget);
+    expect(find.text('Driver approvals'), findsOneWidget);
   });
 }
 
 Future<_ShellHarness> _pumpShell(
   WidgetTester tester, {
   required AppUserRole role,
+  GoldTaxiAuthGateway? authGateway,
 }) async {
   final repository = _ShellRideRepository();
   final state = AppState(
     repository: repository,
     config: const AppConfig(),
     userRole: role,
+    authGateway: authGateway,
+    authProfile: authGateway?.currentProfile,
   );
   final pushService = PushNotificationService(
     messagingClient: const NoopPushMessagingClient(),
@@ -122,6 +143,32 @@ class _ShellHarness {
   }
 }
 
+class _ShellAuthGateway implements GoldTaxiAuthGateway {
+  static const _profile = AuthProfile(
+    session: AuthSession(
+      uid: 'passenger-user',
+      provider: AuthProviderKind.guest,
+      displayName: 'GoldTaxi Passenger',
+    ),
+    role: AppUserRole.passenger,
+  );
+
+  @override
+  bool get supportsGoogleSignIn => true;
+
+  @override
+  AuthProfile? get currentProfile => _profile;
+
+  @override
+  Future<AuthProfile> ensureSignedInProfile() async => _profile;
+
+  @override
+  Future<AuthProfile> signInWithGoogle() async => _profile;
+
+  @override
+  Future<AuthProfile> signOutToGuest() async => _profile;
+}
+
 class _ShellRideRepository implements RideRepository {
   final _driversController = StreamController<List<Driver>>.broadcast()
     ..add(const []);
@@ -163,6 +210,10 @@ class _ShellRideRepository implements RideRepository {
 
   @override
   Future<void> adminCancelRide(String rideId, String reason) async {}
+
+  @override
+  Future<String> approveDriver(DriverApprovalInput input) async =>
+      'driver-approved';
 
   @override
   Future<void> setDriverOnline(bool online) async {}

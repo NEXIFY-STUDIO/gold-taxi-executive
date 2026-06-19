@@ -5,6 +5,7 @@ import '../../services/dispatch_service.dart';
 import '../../services/payment_gateway.dart';
 import '../../services/pricing_service.dart';
 import '../models/driver.dart';
+import '../models/driver_approval.dart';
 import '../models/location_point.dart';
 import '../models/ride.dart';
 import '../models/vehicle_class.dart';
@@ -277,6 +278,35 @@ class MockRideRepository implements RideRepository {
   @override
   Future<void> adminCancelRide(String rideId, String reason) async {
     await cancelRide(rideId, reason);
+  }
+
+  @override
+  Future<String> approveDriver(DriverApprovalInput input) async {
+    final driverId = 'drv_${input.targetUid.trim()}';
+    final existingIndex =
+        _drivers.indexWhere((driver) => driver.id == driverId);
+    final driver = Driver(
+      id: driverId,
+      name: input.name.trim(),
+      vehicleName: input.vehicleLabel.trim(),
+      plateNumber: input.licensePlate.trim().toUpperCase(),
+      vehicleClass: input.vehicleClass,
+      location: const LocationPoint(
+        latitude: 47.3769,
+        longitude: 8.5417,
+        label: 'Zürich HB',
+      ),
+      heading: 0,
+      rating: 5,
+      status: DriverStatus.offline,
+      photoUrl: '',
+    );
+    if (existingIndex == -1) {
+      _drivers.add(driver);
+    } else {
+      _drivers[existingIndex] = driver;
+    }
+    return driverId;
   }
 
   void _scheduleOfferExpiry(String rideId) {

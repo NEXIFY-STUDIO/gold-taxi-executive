@@ -42,9 +42,10 @@
       margin: 0;
       padding: 0;
       width: 100%;
+      height: 100%;
       max-width: 100%;
-      overflow-x: hidden;
-      overscroll-behavior-x: none;
+      overflow: hidden;
+      overscroll-behavior: none;
       background: #111111;
       touch-action: pan-y pinch-zoom;
     }
@@ -52,8 +53,12 @@
     body > flt-glass-pane,
     body > flutter-view,
     body > div[data-flutter-view] {
+      width: 100vw;
+      height: 100vh;
       max-width: 100vw;
-      overflow-x: hidden;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: pan-y pinch-zoom;
     }
   </style>
   <script>

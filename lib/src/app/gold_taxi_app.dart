@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'browser_route.dart';
 import '../config/app_config.dart';
 import '../theme/app_theme.dart';
-import '../ui/screens/home_landing_screen.dart';
 import '../ui/screens/app_shell_loader.dart';
+import '../ui/screens/welcome_screen.dart';
 
 class GoldTaxiApp extends StatefulWidget {
   const GoldTaxiApp({super.key, required this.config});
@@ -22,15 +23,22 @@ class _GoldTaxiAppState extends State<GoldTaxiApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       scaffoldMessengerKey: _scaffoldMessengerKey,
-      title: 'GoldTaxi v2.5',
+      title: widget.config.brand.appTitle,
       debugShowCheckedModeBanner: false,
       scrollBehavior: const GoldTaxiScrollBehavior(),
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.dark,
-      home: const LandingPageScreen(),
+      initialRoute: _initialRoute(),
       routes: {
-        '/home': (context) => const LandingPageScreen(),
+        '/': (context) => WelcomeScreen(
+              brand: widget.config.brand,
+              onContinue: () => Navigator.of(context).pushNamed('/app'),
+            ),
+        '/home': (context) => WelcomeScreen(
+              brand: widget.config.brand,
+              onContinue: () => Navigator.of(context).pushNamed('/app'),
+            ),
         '/app': (context) => AppShellLoader(
               config: widget.config,
               scaffoldMessengerKey: _scaffoldMessengerKey,
@@ -38,4 +46,32 @@ class _GoldTaxiAppState extends State<GoldTaxiApp> {
       },
     );
   }
+
+  String _initialRoute() {
+    return resolveGoldTaxiInitialRoute(
+      browserPath: currentBrowserPath(),
+      platformRoute:
+          WidgetsBinding.instance.platformDispatcher.defaultRouteName,
+    );
+  }
+}
+
+@visibleForTesting
+String resolveGoldTaxiInitialRoute({
+  required String browserPath,
+  required String platformRoute,
+}) {
+  return _knownRoute(browserPath) ?? _knownRoute(platformRoute) ?? '/';
+}
+
+String? _knownRoute(String value) {
+  final trimmed = value.trim();
+  final route = trimmed.length > 1 && trimmed.endsWith('/')
+      ? trimmed.substring(0, trimmed.length - 1)
+      : trimmed;
+  return switch (route) {
+    '' || '/' => '/',
+    '/home' || '/app' => route,
+    _ => null,
+  };
 }

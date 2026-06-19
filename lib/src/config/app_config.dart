@@ -1,3 +1,4 @@
+import 'brand_config.dart';
 import 'maps_config.dart';
 
 enum BackendMode { mock, firebase }
@@ -5,6 +6,7 @@ enum BackendMode { mock, firebase }
 class AppConfig {
   const AppConfig({
     this.backendMode = BackendMode.mock,
+    this.brand = const BrandConfig(),
     this.maps = const MapsConfig(),
     this.fcmWebVapidKey = const String.fromEnvironment(
       'FIREBASE_WEB_VAPID_KEY',
@@ -26,8 +28,10 @@ class AppConfig {
       defaultValue: 'mock',
     );
     return AppConfig(
-      backendMode:
-          backendMode.toLowerCase() == 'firebase' ? BackendMode.firebase : BackendMode.mock,
+      backendMode: backendMode.toLowerCase() == 'firebase'
+          ? BackendMode.firebase
+          : BackendMode.mock,
+      brand: const BrandConfig(),
       googleMapsApiKey: const String.fromEnvironment(
         'GOOGLE_MAPS_API_KEY',
         defaultValue: '',
@@ -40,6 +44,7 @@ class AppConfig {
   }
 
   final BackendMode backendMode;
+  final BrandConfig brand;
   final MapsConfig maps;
   final String fcmWebVapidKey;
   final String googleMapsApiKey;
@@ -49,7 +54,6 @@ class AppConfig {
   bool get useFirebaseRuntime => backendMode == BackendMode.firebase;
 
   /// Returns the effective Google Maps API key (maps key if available, otherwise places key)
-  String get effectiveGoogleApiKey => googleMapsApiKey.isNotEmpty
-      ? googleMapsApiKey
-      : googlePlacesApiKey;
+  String get effectiveGoogleApiKey =>
+      googleMapsApiKey.isNotEmpty ? googleMapsApiKey : googlePlacesApiKey;
 }

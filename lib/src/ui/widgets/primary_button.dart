@@ -22,15 +22,16 @@ class PrimaryButton extends StatelessWidget {
 
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: 50,
       child: FilledButton.icon(
         onPressed: effectiveOnPressed,
         style: FilledButton.styleFrom(
           backgroundColor: AppTheme.gold,
           foregroundColor: Colors.black,
           disabledBackgroundColor: AppTheme.gold.withValues(alpha: .35),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
         icon: isLoading
@@ -39,10 +40,14 @@ class PrimaryButton extends StatelessWidget {
                 height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : Icon(icon ?? Icons.arrow_forward_rounded),
-        label: Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w800),
+            : Icon(icon ?? Icons.arrow_forward_rounded, size: 20),
+        label: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
         ),
       ),
     );

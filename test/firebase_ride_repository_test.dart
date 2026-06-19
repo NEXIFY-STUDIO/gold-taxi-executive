@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:goldtaxi_bolt_v2_5/src/models/app_user_role.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/driver.dart';
+import 'package:goldtaxi_bolt_v2_5/src/data/models/driver_approval.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/location_point.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/ride.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/models/vehicle_class.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/repositories/firebase_ride_repository.dart';
 import 'package:goldtaxi_bolt_v2_5/src/data/repositories/firebase_runtime_gateway.dart';
+import 'package:goldtaxi_bolt_v2_5/src/services/auth/auth_gateway.dart';
 
 void main() {
   test('FirebaseRideRepository delegates ride commands and streams', () async {
@@ -51,7 +53,18 @@ void main() {
     await repository.completeRide('ride-1');
     await repository.cancelRide('ride-1', 'ops');
     await repository.adminCancelRide('ride-1', 'ops');
+    final driverId = await repository.approveDriver(
+      const DriverApprovalInput(
+        targetUid: 'passenger-user',
+        name: 'Driver User',
+        phone: '+421900000000',
+        vehicleLabel: 'Mercedes S-Class',
+        licensePlate: 'ZH 824 611',
+        vehicleClass: VehicleClass.premium,
+      ),
+    );
 
+    expect(driverId, 'drv-approved');
     expect(gateway.commandLog, [
       'accept:ride-1',
       'decline:ride-1:no thanks',
@@ -60,6 +73,7 @@ void main() {
       'complete:ride-1',
       'cancel:ride-1:ops',
       'ops-cancel:ride-1:ops',
+      'approve:passenger-user',
     ]);
 
     final watched = repository.watchRide('ride-1');
@@ -73,6 +87,15 @@ class FakeFirebaseRuntimeGateway implements FirebaseRuntimeGateway {
   bool initialized = false;
   @override
   AppUserRole get userRole => AppUserRole.driver;
+  @override
+  AuthProfile? get authProfile => const AuthProfile(
+        session: AuthSession(
+          uid: 'driver-user',
+          provider: AuthProviderKind.google,
+          displayName: 'Driver User',
+        ),
+        role: AppUserRole.driver,
+      );
   int createRideCalls = 0;
   final setDriverOnlineCalls = <bool>[];
   final commandLog = <String>[];
@@ -101,6 +124,9 @@ class FakeFirebaseRuntimeGateway implements FirebaseRuntimeGateway {
       ),
     ];
   }
+
+  @override
+  Future<AppUserRole> refreshUserProfile() async => userRole;
 
   @override
   Stream<List<Driver>> watchDrivers(LocationPoint center) =>
@@ -167,6 +193,12 @@ class FakeFirebaseRuntimeGateway implements FirebaseRuntimeGateway {
   @override
   Future<void> adminCancelRide(String rideId, String reason) async {
     commandLog.add('ops-cancel:$rideId:$reason');
+  }
+
+  @override
+  Future<String> approveDriver(DriverApprovalInput input) async {
+    commandLog.add('approve:${input.targetUid}');
+    return 'drv-approved';
   }
 
   @override

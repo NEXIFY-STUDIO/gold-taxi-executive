@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import '../../../firebase_options.dart';
 import '../../models/app_user_role.dart';
+import '../../services/auth/auth_gateway.dart';
+import '../../services/auth/firebase_auth_gateway.dart';
 import '../models/driver.dart';
+import '../models/driver_approval.dart';
 import '../models/location_point.dart';
 import '../models/ride.dart';
 import '../models/vehicle_class.dart';
@@ -14,6 +16,10 @@ abstract class FirebaseRuntimeGateway {
   Future<void> initialize();
 
   AppUserRole get userRole;
+
+  AuthProfile? get authProfile;
+
+  Future<AppUserRole> refreshUserProfile();
 
   Stream<List<Driver>> watchDrivers(LocationPoint center);
 
@@ -39,33 +45,39 @@ abstract class FirebaseRuntimeGateway {
 
   Future<void> adminCancelRide(String rideId, String reason);
 
+  Future<String> approveDriver(DriverApprovalInput input);
+
   Future<void> setDriverOnline(bool online);
 }
 
 class FirebaseRuntimeGatewayImpl implements FirebaseRuntimeGateway {
   FirebaseRuntimeGatewayImpl({
-    FirebaseAuth? auth,
+    GoldTaxiAuthGateway? authGateway,
     FirebaseFirestore? firestore,
     FirebaseFunctions? functions,
     this.region = 'europe-west6',
-  })  : _authOverride = auth,
+  })  : _authGatewayOverride = authGateway,
         _firestoreOverride = firestore,
         _functionsOverride = functions;
 
-  final FirebaseAuth? _authOverride;
+  final GoldTaxiAuthGateway? _authGatewayOverride;
   final FirebaseFirestore? _firestoreOverride;
   final FirebaseFunctions? _functionsOverride;
   final String region;
-  late final FirebaseAuth _auth;
+  late final GoldTaxiAuthGateway _authGateway;
   late final FirebaseFirestore _firestore;
   late final FirebaseFunctions _functions;
   AppUserRole _userRole = AppUserRole.passenger;
+  AuthProfile? _authProfile;
   String? _uid;
   String? _driverId;
   bool _initialized = false;
 
   @override
   AppUserRole get userRole => _userRole;
+
+  @override
+  AuthProfile? get authProfile => _authProfile;
 
   @override
   Future<void> initialize() async {
@@ -78,40 +90,43 @@ class FirebaseRuntimeGatewayImpl implements FirebaseRuntimeGateway {
       );
     }
 
-    _auth = _authOverride ?? FirebaseAuth.instance;
     _firestore = _firestoreOverride ?? FirebaseFirestore.instance;
     _functions =
         _functionsOverride ?? FirebaseFunctions.instanceFor(region: region);
+    _authGateway = _authGatewayOverride ??
+        FirebaseAuthGateway(functions: _functions, region: region);
 
-    final credential =
-        _auth.currentUser == null ? await _auth.signInAnonymously() : null;
-    _uid = _auth.currentUser?.uid ?? credential?.user?.uid;
-    if (_uid == null) {
-      throw StateError('Unable to initialize Firebase runtime auth.');
-    }
-
-    final response = await _functions
-        .httpsCallable('bootstrapUserProfile')
-        .call(<String, dynamic>{
-      'displayName': 'GoldTaxi Passenger',
-      'phoneNumber': '',
-    });
-    _userRole = AppUserRole.fromBackendValue(
-      (response.data as Map<Object?, Object?>)['role'],
-    );
-
-    if (_userRole.canAccessDriverTools) {
-      final driverSnap = await _firestore
-          .collection('drivers')
-          .where('userId', isEqualTo: _uid)
-          .limit(1)
-          .get();
-      if (driverSnap.docs.isNotEmpty) {
-        _driverId = driverSnap.docs.first.id;
-      }
-    }
+    await _loadUserProfile();
 
     _initialized = true;
+  }
+
+  @override
+  Future<AppUserRole> refreshUserProfile() async {
+    _ensureInitialized();
+    await _loadUserProfile();
+    return _userRole;
+  }
+
+  Future<void> _loadUserProfile() async {
+    final profile = await _authGateway.ensureSignedInProfile();
+    _authProfile = profile;
+    _uid = profile.session.uid;
+    _userRole = profile.role;
+    _driverId = null;
+
+    if (!_userRole.canAccessDriverTools) {
+      return;
+    }
+
+    final driverSnap = await _firestore
+        .collection('drivers')
+        .where('userId', isEqualTo: _uid)
+        .limit(1)
+        .get();
+    if (driverSnap.docs.isNotEmpty) {
+      _driverId = driverSnap.docs.first.id;
+    }
   }
 
   @override
@@ -242,6 +257,19 @@ class FirebaseRuntimeGatewayImpl implements FirebaseRuntimeGateway {
       'rideId': rideId,
       'reason': reason,
     });
+  }
+
+  @override
+  Future<String> approveDriver(DriverApprovalInput input) async {
+    _ensureInitialized();
+    final response =
+        await _functions.httpsCallable('approveDriver').call(input.toJson());
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final driverId = data['driverId']?.toString();
+    if (driverId == null || driverId.isEmpty) {
+      throw StateError('approveDriver returned no driverId.');
+    }
+    return driverId;
   }
 
   @override

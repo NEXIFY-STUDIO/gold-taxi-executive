@@ -1,23 +1,27 @@
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../models/app_user_role.dart';
+import '../auth/auth_gateway.dart';
+import '../auth/firebase_auth_gateway.dart';
 import 'client_profile_repository.dart';
 
 class FirebaseClientProfileRepository implements ClientProfileRepository {
   FirebaseClientProfileRepository({
-    FirebaseAuth? auth,
+    GoldTaxiAuthGateway? authGateway,
     FirebaseFunctions? functions,
     this.region = 'europe-west6',
-  })  : _auth = auth,
+  })  : _authGatewayOverride = authGateway,
         _functions = functions;
 
-  FirebaseAuth? _auth;
+  final GoldTaxiAuthGateway? _authGatewayOverride;
   FirebaseFunctions? _functions;
   final String region;
+  GoldTaxiAuthGateway? _authGateway;
   AppUserRole _role = AppUserRole.passenger;
 
-  FirebaseAuth get _clientAuth => _auth ??= FirebaseAuth.instance;
+  GoldTaxiAuthGateway get _clientAuthGateway =>
+      _authGateway ??= _authGatewayOverride ??
+          FirebaseAuthGateway(functions: _clientFunctions, region: region);
 
   FirebaseFunctions get _clientFunctions =>
       _functions ??= FirebaseFunctions.instanceFor(region: region);
@@ -27,17 +31,8 @@ class FirebaseClientProfileRepository implements ClientProfileRepository {
 
   @override
   Future<void> bootstrapProfiles() async {
-    await _ensureSignedIn();
-
-    final response = await _clientFunctions
-        .httpsCallable('bootstrapUserProfile')
-        .call(<String, dynamic>{
-      'displayName': 'GoldTaxi Passenger',
-      'phoneNumber': '',
-    });
-    _role = AppUserRole.fromBackendValue(
-      (response.data as Map<Object?, Object?>)['role'],
-    );
+    final profile = await _clientAuthGateway.ensureSignedInProfile();
+    _role = profile.role;
   }
 
   @override
@@ -51,7 +46,7 @@ class FirebaseClientProfileRepository implements ClientProfileRepository {
     required String token,
     required PushAudience audience,
   }) async {
-    await _ensureSignedIn();
+    await bootstrapProfiles();
     if (audience == PushAudience.driver && !_role.canAccessDriverTools) {
       return;
     }
@@ -61,12 +56,5 @@ class FirebaseClientProfileRepository implements ClientProfileRepository {
       'token': token,
       'role': audience.name,
     });
-  }
-
-  Future<void> _ensureSignedIn() async {
-    if (_clientAuth.currentUser != null) {
-      return;
-    }
-    await _clientAuth.signInAnonymously();
   }
 }

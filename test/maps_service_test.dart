@@ -33,4 +33,27 @@ void main() {
     expect(route.distanceKm, greaterThan(0));
     expect(route.durationMinutes, greaterThan(0));
   });
+
+  test('browser-safe Google maps service avoids direct REST calls', () async {
+    const service = BrowserSafeGoogleMapsService();
+
+    expect(service.providerName, 'Google Maps');
+    expect(await service.autocomplete('airport').first, isNotEmpty);
+
+    final route = await service.routeBetween(
+      const LocationPoint(
+        latitude: 47.3769,
+        longitude: 8.5417,
+        label: 'Zürich HB',
+      ),
+      const LocationPoint(
+        latitude: 47.4581,
+        longitude: 8.5555,
+        label: 'Zürich Airport',
+      ),
+    );
+
+    expect(route.distanceKm, greaterThan(0));
+    expect(route.durationMinutes, greaterThan(0));
+  });
 }
