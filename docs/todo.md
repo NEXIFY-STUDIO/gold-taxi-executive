@@ -353,12 +353,68 @@ curl -s -o /dev/null -w 'root:%{http_code}\noffline:%{http_code}\n' \
 
 **Open items**
 
-- this directory still needs to be initialized as a real Git repository or moved into one before commit/branch workflows are possible
+- Git repository was initialized after this checkpoint in commit `624f7826eb9cf829b9c4fdccf70aa0e8321c3fba`
 - driver enablement still needs a dedicated admin provisioning flow
 
 **Verdict**
 
 - `PASS`
+
+---
+
+## CI checkpoint — GitHub Actions
+
+**Workflow name**
+
+- `Gold Taxi CI`
+
+**Workflow files**
+
+- `.github/workflows/ci.yml`
+- `.github/workflows/firebase-hosting-merge.yml`
+
+**CI coverage**
+
+- runs on pull requests targeting `main`
+- runs on pushes to `main`
+- Flutter app gate:
+  - `flutter pub get`
+  - `flutter analyze`
+  - `flutter test`
+  - `flutter build web --release`
+- Firebase Functions gate:
+  - `npm --prefix functions ci`
+  - `npm --prefix functions test`
+  - `npm --prefix functions run build`
+
+**Production deploy workflow**
+
+- deployment remains separate from CI
+- hosting deploy now waits for successful `Gold Taxi CI` completion on `main`
+- production deploy build creates a temporary `.env.production` from GitHub Secrets
+- no `.env.production.deployment` file is committed or used by CI
+
+**Required GitHub Secrets for production hosting deploy**
+
+- `GOOGLE_MAPS_API_KEY`
+- `GOOGLE_PLACES_API_KEY`
+- `FIREBASE_WEB_VAPID_KEY`
+- `FIREBASE_SERVICE_ACCOUNT_GOLDTAXI_202FF`
+
+**Branch protection recommendation**
+
+- require `Gold Taxi CI / Flutter app` before merge
+- require `Gold Taxi CI / Firebase Functions` before merge
+- block direct pushes to `main` where possible
+- require pull request review before merge once collaborators are added
+- keep Firebase deploy secrets available only to trusted branches/environments
+
+**Still manual**
+
+- configuring GitHub branch protection rules in repository settings
+- verifying production deploy secrets exist in GitHub repository secrets
+- pushing this repository to GitHub if the remote has not yet been connected
+- full production deploy remains controlled by the separate hosting workflow
 
 ---
 
