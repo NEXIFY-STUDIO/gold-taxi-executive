@@ -17,6 +17,7 @@ dependencies:
   cloud_firestore: ^6.0.0
   http: ^1.2.2
   web: ^1.1.1
+  google_fonts: ^8.1.0
 
 dev_dependencies:
   flutter_test:
@@ -29,6 +30,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/icons/
     - assets/images/
     - assets/branding/
 

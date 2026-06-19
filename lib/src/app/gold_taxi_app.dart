@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'browser_route.dart';
 import '../config/app_config.dart';
 import '../theme/app_theme.dart';
-import '../ui/screens/home_landing_screen.dart';
 import '../ui/screens/app_shell_loader.dart';
+import '../ui/screens/welcome_screen.dart';
 
 class GoldTaxiApp extends StatefulWidget {
   const GoldTaxiApp({super.key, required this.config});
@@ -31,8 +31,14 @@ class _GoldTaxiAppState extends State<GoldTaxiApp> {
       themeMode: ThemeMode.dark,
       initialRoute: _initialRoute(),
       routes: {
-        '/': (context) => LandingPageScreen(brand: widget.config.brand),
-        '/home': (context) => LandingPageScreen(brand: widget.config.brand),
+        '/': (context) => WelcomeScreen(
+              brand: widget.config.brand,
+              onContinue: () => Navigator.of(context).pushNamed('/app'),
+            ),
+        '/home': (context) => WelcomeScreen(
+              brand: widget.config.brand,
+              onContinue: () => Navigator.of(context).pushNamed('/app'),
+            ),
         '/app': (context) => AppShellLoader(
               config: widget.config,
               scaffoldMessengerKey: _scaffoldMessengerKey,

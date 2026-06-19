@@ -1,13 +1,16 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import 'gold_tokens.dart';
 
 class AppTheme {
-  static const Color gold = Color(0xFFC9A84C);
-  static const Color goldBright = Color(0xFFEBCB73);
-  static const Color black = Color(0xFF070706);
-  static const Color surface = Color(0xFF111009);
-  static const Color surface2 = Color(0xFF1B1911);
-  static const Color textMuted = Color(0xFFA6A08E);
+  static const Color gold = GoldTokens.goldPrimary;
+  static const Color goldBright = GoldTokens.goldBright;
+  static const Color black = GoldTokens.blackBase;
+  static const Color surface = GoldTokens.blackElevated;
+  static const Color surface2 = GoldTokens.blackPanel;
+  static const Color textMuted = GoldTokens.textMuted;
 
   static ThemeData dark() {
     final scheme = ColorScheme.fromSeed(
@@ -18,12 +21,12 @@ class AppTheme {
       surface: surface,
     );
 
-    return ThemeData(
+    final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: scheme,
       scaffoldBackgroundColor: black,
-      fontFamily: 'Roboto',
+      fontFamily: GoldTokens.fontFamily,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -63,6 +66,12 @@ class AppTheme {
           borderSide: const BorderSide(color: gold),
         ),
       ),
+    );
+
+    return base.copyWith(
+      textTheme: GoogleFonts.plusJakartaSansTextTheme(base.textTheme),
+      primaryTextTheme:
+          GoogleFonts.plusJakartaSansTextTheme(base.primaryTextTheme),
     );
   }
 
