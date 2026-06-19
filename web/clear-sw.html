@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoldTaxi Recovery</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #070706;
+      color: #f6f0de;
+      font-family: Arial, sans-serif;
+    }
+
+    main {
+      width: min(560px, calc(100vw - 32px));
+      padding: 32px;
+      border-radius: 20px;
+      background: #111009;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      color: #c9a84c;
+      font-size: 28px;
+    }
+
+    p {
+      line-height: 1.6;
+      color: #d5cfbf;
+    }
+
+    code {
+      color: #ebcb73;
+    }
+
+    button {
+      margin-top: 16px;
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 20px;
+      background: #c9a84c;
+      color: #070706;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>GoldTaxi Recovery</h1>
+    <p id="status">Clearing old service workers and cached app shell...</p>
+    <p>If the app was stuck on an endless loading screen, this page resets the old browser registration and sends you back to the app.</p>
+    <button id="continue" hidden>Open GoldTaxi</button>
+  </main>
+
+  <script>
+    (async function () {
+      const status = document.getElementById('status');
+      const button = document.getElementById('continue');
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((registration) => registration.unregister()));
+        }
+
+        status.textContent = 'Recovery complete. Redirecting to GoldTaxi...';
+        setTimeout(() => {
+          window.location.replace('/');
+        }, 1200);
+      } catch (error) {
+        console.error(error);
+        status.innerHTML = 'Automatic recovery failed. Click the button below to return to <code>/</code>.';
+        button.hidden = false;
+        button.addEventListener('click', () => {
+          window.location.href = '/';
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

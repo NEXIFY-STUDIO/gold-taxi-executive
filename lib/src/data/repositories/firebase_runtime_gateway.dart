@@ -1,0 +1,356 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+
+import '../../../firebase_options.dart';
+import '../../models/app_user_role.dart';
+import '../models/driver.dart';
+import '../models/location_point.dart';
+import '../models/ride.dart';
+import '../models/vehicle_class.dart';
+
+abstract class FirebaseRuntimeGateway {
+  Future<void> initialize();
+
+  AppUserRole get userRole;
+
+  Stream<List<Driver>> watchDrivers(LocationPoint center);
+
+  Stream<Ride> watchRide(String rideId);
+
+  Future<Ride> createRide({
+    required LocationPoint pickup,
+    required LocationPoint dropoff,
+    required VehicleClass vehicleClass,
+  });
+
+  Future<void> acceptRide(String rideId);
+
+  Future<void> declineRide(String rideId, String reason);
+
+  Future<void> markArrived(String rideId);
+
+  Future<void> startRide(String rideId);
+
+  Future<void> completeRide(String rideId);
+
+  Future<void> cancelRide(String rideId, String reason);
+
+  Future<void> adminCancelRide(String rideId, String reason);
+
+  Future<void> setDriverOnline(bool online);
+}
+
+class FirebaseRuntimeGatewayImpl implements FirebaseRuntimeGateway {
+  FirebaseRuntimeGatewayImpl({
+    FirebaseAuth? auth,
+    FirebaseFirestore? firestore,
+    FirebaseFunctions? functions,
+    this.region = 'europe-west6',
+  })  : _authOverride = auth,
+        _firestoreOverride = firestore,
+        _functionsOverride = functions;
+
+  final FirebaseAuth? _authOverride;
+  final FirebaseFirestore? _firestoreOverride;
+  final FirebaseFunctions? _functionsOverride;
+  final String region;
+  late final FirebaseAuth _auth;
+  late final FirebaseFirestore _firestore;
+  late final FirebaseFunctions _functions;
+  AppUserRole _userRole = AppUserRole.passenger;
+  String? _uid;
+  String? _driverId;
+  bool _initialized = false;
+
+  @override
+  AppUserRole get userRole => _userRole;
+
+  @override
+  Future<void> initialize() async {
+    if (_initialized) {
+      return;
+    }
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+
+    _auth = _authOverride ?? FirebaseAuth.instance;
+    _firestore = _firestoreOverride ?? FirebaseFirestore.instance;
+    _functions =
+        _functionsOverride ?? FirebaseFunctions.instanceFor(region: region);
+
+    final credential =
+        _auth.currentUser == null ? await _auth.signInAnonymously() : null;
+    _uid = _auth.currentUser?.uid ?? credential?.user?.uid;
+    if (_uid == null) {
+      throw StateError('Unable to initialize Firebase runtime auth.');
+    }
+
+    final response = await _functions
+        .httpsCallable('bootstrapUserProfile')
+        .call(<String, dynamic>{
+      'displayName': 'GoldTaxi Passenger',
+      'phoneNumber': '',
+    });
+    _userRole = AppUserRole.fromBackendValue(
+      (response.data as Map<Object?, Object?>)['role'],
+    );
+
+    if (_userRole.canAccessDriverTools) {
+      final driverSnap = await _firestore
+          .collection('drivers')
+          .where('userId', isEqualTo: _uid)
+          .limit(1)
+          .get();
+      if (driverSnap.docs.isNotEmpty) {
+        _driverId = driverSnap.docs.first.id;
+      }
+    }
+
+    _initialized = true;
+  }
+
+  @override
+  Stream<List<Driver>> watchDrivers(LocationPoint center) {
+    _ensureInitialized();
+    return _firestore.collection('drivers').snapshots().map((snapshot) {
+      final drivers = snapshot.docs
+          .map(
+            (doc) => Driver.fromJson(<String, dynamic>{
+              ...doc.data(),
+              'id': doc.id,
+            }),
+          )
+          .toList()
+        ..sort((a, b) {
+          final aDistance = a.location.distanceKmTo(center);
+          final bDistance = b.location.distanceKmTo(center);
+          return aDistance.compareTo(bDistance);
+        });
+      return drivers;
+    });
+  }
+
+  @override
+  Stream<Ride> watchRide(String rideId) {
+    _ensureInitialized();
+    return _firestore.doc('rides/$rideId').snapshots().asyncMap((snap) async {
+      if (!snap.exists) {
+        throw StateError('Ride not found.');
+      }
+      return _mapRide(snap.data()!, snap.id);
+    });
+  }
+
+  @override
+  Future<Ride> createRide({
+    required LocationPoint pickup,
+    required LocationPoint dropoff,
+    required VehicleClass vehicleClass,
+  }) async {
+    _ensureInitialized();
+    final response =
+        await _functions.httpsCallable('createRide').call(<String, dynamic>{
+      'pickup': pickup.toJson(),
+      'dropoff': dropoff.toJson(),
+      'vehicleClass': vehicleClass.name,
+      'commandId': DateTime.now().millisecondsSinceEpoch.toString(),
+    });
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final rideId = data['rideId']?.toString();
+    if (rideId == null || rideId.isEmpty) {
+      throw StateError('createRide returned no rideId.');
+    }
+    final rideSnap = await _firestore.doc('rides/$rideId').get();
+    if (!rideSnap.exists) {
+      return Ride(
+        id: rideId,
+        pickup: pickup,
+        dropoff: dropoff,
+        vehicleClass: vehicleClass,
+        status: RideStatus.searching,
+        estimatedFare: (data['estimatedFare'] as num?)?.toDouble() ?? 0,
+        finalFare: null,
+        distanceKm: pickup.distanceKmTo(dropoff),
+        durationMinutes: 0,
+        createdAt: DateTime.now(),
+      );
+    }
+    return _mapRide(rideSnap.data()!, rideSnap.id);
+  }
+
+  @override
+  Future<void> acceptRide(String rideId) async {
+    _ensureInitialized();
+    await _functions.httpsCallable('acceptRide').call(<String, dynamic>{
+      'rideId': rideId,
+      'commandId': DateTime.now().millisecondsSinceEpoch.toString(),
+    });
+  }
+
+  @override
+  Future<void> declineRide(String rideId, String reason) async {
+    _ensureInitialized();
+    await _functions.httpsCallable('declineRide').call(<String, dynamic>{
+      'rideId': rideId,
+      'reason': reason,
+      'commandId': DateTime.now().millisecondsSinceEpoch.toString(),
+    });
+  }
+
+  @override
+  Future<void> markArrived(String rideId) async {
+    _ensureInitialized();
+    await _functions.httpsCallable('driverArrived').call(<String, dynamic>{
+      'rideId': rideId,
+    });
+  }
+
+  @override
+  Future<void> startRide(String rideId) async {
+    _ensureInitialized();
+    await _functions.httpsCallable('startRide').call(<String, dynamic>{
+      'rideId': rideId,
+    });
+  }
+
+  @override
+  Future<void> completeRide(String rideId) async {
+    _ensureInitialized();
+    await _functions.httpsCallable('completeRide').call(<String, dynamic>{
+      'rideId': rideId,
+    });
+  }
+
+  @override
+  Future<void> cancelRide(String rideId, String reason) async {
+    _ensureInitialized();
+    await _functions.httpsCallable('cancelRide').call(<String, dynamic>{
+      'rideId': rideId,
+      'reason': reason,
+    });
+  }
+
+  @override
+  Future<void> adminCancelRide(String rideId, String reason) async {
+    _ensureInitialized();
+    await _functions.httpsCallable('opsCancelRide').call(<String, dynamic>{
+      'rideId': rideId,
+      'reason': reason,
+    });
+  }
+
+  @override
+  Future<void> setDriverOnline(bool online) async {
+    _ensureInitialized();
+    if (!_userRole.canAccessDriverTools) {
+      throw StateError('Driver role required to change driver availability.');
+    }
+    await _functions.httpsCallable('setDriverOnline').call(<String, dynamic>{
+      'online': online,
+      'driverId': _driverId,
+    });
+  }
+
+  Future<Ride> _mapRide(Map<String, dynamic> data, String rideId) async {
+    final pickup = _readLocation(
+      data['pickup'],
+      fallbackLabel: 'Pickup',
+    );
+    final dropoff = _readLocation(
+      data['dropoff'],
+      fallbackLabel: 'Dropoff',
+    );
+    final driverId = data['driverId']?.toString();
+    Driver? driver;
+    if (driverId != null && driverId.isNotEmpty) {
+      final driverSnap = await _firestore.doc('drivers/$driverId').get();
+      if (driverSnap.exists) {
+        driver = Driver.fromJson(<String, dynamic>{
+          ...driverSnap.data()!,
+          'id': driverSnap.id,
+        });
+      }
+    }
+
+    return Ride(
+      id: rideId,
+      pickup: pickup,
+      dropoff: dropoff,
+      vehicleClass: _parseVehicleClass(data['vehicleClass']),
+      status: _parseRideStatus(data['status']),
+      estimatedFare: _readDouble(data['estimatedFare']),
+      finalFare: _readNullableDouble(data['finalFare']),
+      distanceKm: _readDouble(data['distanceKm']),
+      durationMinutes: _readInt(data['durationMinutes']),
+      createdAt: _readDateTime(data['createdAt']) ?? DateTime.now(),
+      driver: driver,
+      waitMinutes: _readInt(data['waitMinutes']),
+      surgeMultiplier: _readDouble(data['surgeMultiplier'], defaultValue: 1.0),
+    );
+  }
+
+  LocationPoint _readLocation(
+    Object? value, {
+    required String fallbackLabel,
+  }) {
+    if (value is Map<String, dynamic>) {
+      return LocationPoint(
+        latitude: _readDouble(value['latitude']),
+        longitude: _readDouble(value['longitude']),
+        label: value['label']?.toString() ?? fallbackLabel,
+      );
+    }
+    return LocationPoint(
+      latitude: 47.3769,
+      longitude: 8.5417,
+      label: fallbackLabel,
+    );
+  }
+
+  RideStatus _parseRideStatus(Object? value) {
+    return RideStatus.values.firstWhere(
+      (status) => status.name == value?.toString(),
+      orElse: () => RideStatus.searching,
+    );
+  }
+
+  VehicleClass _parseVehicleClass(Object? value) {
+    return VehicleClass.values.firstWhere(
+      (status) => status.name == value?.toString(),
+      orElse: () => VehicleClass.standard,
+    );
+  }
+
+  double _readDouble(Object? value, {double defaultValue = 0}) {
+    return value is num ? value.toDouble() : defaultValue;
+  }
+
+  double? _readNullableDouble(Object? value) {
+    return value is num ? value.toDouble() : null;
+  }
+
+  int _readInt(Object? value, {int defaultValue = 0}) {
+    return value is num ? value.toInt() : defaultValue;
+  }
+
+  DateTime? _readDateTime(Object? value) {
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+    return null;
+  }
+
+  void _ensureInitialized() {
+    if (!_initialized) {
+      throw StateError('Firebase runtime has not finished initialization.');
+    }
+  }
+}

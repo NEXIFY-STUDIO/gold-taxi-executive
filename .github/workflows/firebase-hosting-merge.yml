@@ -1,0 +1,40 @@
+name: Deploy to Firebase Hosting on merge
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Create production env file
+        run: |
+          : "${GOOGLE_MAPS_API_KEY:?Missing GitHub secret GOOGLE_MAPS_API_KEY}"
+          : "${GOOGLE_PLACES_API_KEY:?Missing GitHub secret GOOGLE_PLACES_API_KEY}"
+          : "${FIREBASE_WEB_VAPID_KEY:?Missing GitHub secret FIREBASE_WEB_VAPID_KEY}"
+          {
+            echo "BACKEND_MODE=firebase"
+            echo "GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}"
+            echo "GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}"
+            echo "FIREBASE_WEB_VAPID_KEY=${FIREBASE_WEB_VAPID_KEY}"
+          } > .env.production
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          FIREBASE_WEB_VAPID_KEY: ${{ secrets.FIREBASE_WEB_VAPID_KEY }}
+      - name: Build Web
+        run: flutter build web --release --pwa-strategy=none --dart-define-from-file=.env.production
+      - name: Deploy to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_GOLDTAXI_202FF }}'
+          channelId: live
+          projectId: goldtaxi-202ff

@@ -1,0 +1,92 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.role == 'admin';
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isParticipant(data) {
+      return signedIn() && (
+        data.passengerId == request.auth.uid ||
+        data.driverId == request.auth.uid
+      );
+    }
+
+    function isPaymentParticipant(data) {
+      return signedIn() && (
+        data.userId == request.auth.uid ||
+        data.driverId == request.auth.uid
+      );
+    }
+
+    function rideIsParticipant(rideId) {
+      return signedIn() && (
+        get(/databases/$(database)/documents/rides/$(rideId)).data.passengerId == request.auth.uid ||
+        get(/databases/$(database)/documents/rides/$(rideId)).data.driverId == request.auth.uid
+      );
+    }
+
+    function userCreateKeysValid() {
+      return request.resource.data.keys().hasOnly([
+        'uid',
+        'role',
+        'displayName',
+        'phoneNumber',
+        'createdAt',
+        'updatedAt',
+      ]) &&
+      request.resource.data.uid == request.auth.uid &&
+      request.resource.data.role == 'passenger';
+    }
+
+    function userSelfUpdateKeysValid() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly([
+        'displayName',
+        'phoneNumber',
+        'updatedAt',
+      ]);
+    }
+
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow create: if isAdmin() || (isSelf(uid) && userCreateKeysValid());
+      allow update: if isAdmin() || (isSelf(uid) && userSelfUpdateKeysValid());
+      allow delete: if isAdmin();
+    }
+
+    match /drivers/{driverId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /vehicles/{vehicleId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /rides/{rideId} {
+      allow read: if isAdmin() || isParticipant(resource.data);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /ride_events/{eventId} {
+      allow read: if isAdmin() || rideIsParticipant(resource.data.rideId);
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isAdmin() || isPaymentParticipant(resource.data);
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}

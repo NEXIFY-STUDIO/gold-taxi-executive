@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://goldtaxi-202ff.web.app/sitemap.xml

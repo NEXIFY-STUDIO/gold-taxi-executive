@@ -1,0 +1,30 @@
+{
+  "project": "goldtaxi_bolt_v2_5",
+  "baseUrl": "https://gold-taxi-clean.web.app",
+  "notes": {
+    "pwaScope": "Safe static shell and offline fallback only. Authenticated booking, account, tracking, payments and Firebase runtime data remain online-only.",
+    "offlineCaching": "Only same-origin static shell and public assets may be cached. Firebase/Auth/API data must never be cached offline."
+  },
+  "routes": [
+    {
+      "path": "/home",
+      "minimumScores": {
+        "performance": 95,
+        "accessibility": 95,
+        "bestPractices": 95,
+        "seo": 95,
+        "pwa": 50
+      }
+    },
+    {
+      "path": "/app",
+      "minimumScores": {
+        "performance": 95,
+        "accessibility": 95,
+        "bestPractices": 95,
+        "seo": 95,
+        "pwa": 50
+      }
+    }
+  ]
+}

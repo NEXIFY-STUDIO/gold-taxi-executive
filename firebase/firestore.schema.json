@@ -1,0 +1,87 @@
+{
+  "auth": {
+    "provider": "Firebase Auth",
+    "claims": ["role: admin", "role: driver", "role: passenger"]
+  },
+  "collections": {
+    "users": {
+      "documentId": "uid",
+      "fields": {
+        "uid": "string",
+        "role": "admin | driver | passenger",
+        "displayName": "string",
+        "phoneNumber": "string",
+        "createdAt": "timestamp",
+        "updatedAt": "timestamp"
+      }
+    },
+    "drivers": {
+      "documentId": "driverId",
+      "fields": {
+        "userId": "string",
+        "status": "offline | online | busy | offDuty",
+        "rating": "number",
+        "vehicleId": "string",
+        "currentRideId": "string | null",
+        "createdAt": "timestamp",
+        "updatedAt": "timestamp"
+      }
+    },
+    "vehicles": {
+      "documentId": "vehicleId",
+      "fields": {
+        "driverId": "string",
+        "make": "string",
+        "model": "string",
+        "plateNumber": "string",
+        "vehicleClass": "standard | comfort | premium | van",
+        "active": "boolean",
+        "createdAt": "timestamp",
+        "updatedAt": "timestamp"
+      }
+    },
+    "rides": {
+      "documentId": "rideId",
+      "fields": {
+        "passengerId": "string",
+        "driverId": "string | null",
+        "vehicleId": "string | null",
+        "status": "draft | searching | accepted | driverArriving | arrived | inProgress | completed | cancelled | paymentFailed",
+        "pickup": "map",
+        "dropoff": "map",
+        "vehicleClass": "string",
+        "estimatedFare": "number",
+        "finalFare": "number | null",
+        "paymentStatus": "pending | authorized | captured | failed | refunded | null",
+        "currency": "string",
+        "createdAt": "timestamp",
+        "updatedAt": "timestamp"
+      }
+    },
+    "ride_events": {
+      "documentId": "eventId",
+      "fields": {
+        "rideId": "string",
+        "type": "string",
+        "actorId": "string",
+        "payload": "map",
+        "createdAt": "timestamp"
+      }
+    },
+    "payments": {
+      "documentId": "paymentId",
+      "fields": {
+        "rideId": "string",
+        "userId": "string",
+        "driverId": "string | null",
+        "provider": "stripe",
+        "amount": "number",
+        "currency": "string",
+        "status": "pending | authorized | captured | failed | refunded",
+        "providerRef": "string | null",
+        "createdAt": "timestamp",
+        "updatedAt": "timestamp"
+      }
+    }
+  }
+}

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="GoldTaxi is a premium multilingual mobility platform for Swiss operators.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta name="theme-color" content="#0A0A0A">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="GoldTaxi">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png"/>
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png"/>
+  <link rel="shortcut icon" href="favicon.ico"/>
+
+  <title>GoldTaxi · Premium Mobility</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+      overscroll-behavior-x: none;
+      background: #111111;
+      touch-action: pan-y pinch-zoom;
+    }
+
+    body > flt-glass-pane,
+    body > flutter-view,
+    body > div[data-flutter-view] {
+      max-width: 100vw;
+      overflow-x: hidden;
+    }
+  </style>
+  <script>
+    (function () {
+      const desired = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes';
+      function fixViewport() {
+        let meta = document.querySelector('meta[name="viewport"]');
+        if (!meta) {
+          meta = document.createElement('meta');
+          meta.name = 'viewport';
+          document.head.appendChild(meta);
+        }
+        if (meta.getAttribute('content') !== desired) {
+          meta.setAttribute('content', desired);
+        }
+      }
+      const observer = new MutationObserver(fixViewport);
+      observer.observe(document.head, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['content'],
+      });
+      window.addEventListener('load', fixViewport);
+      fixViewport();
+    })();
+  </script>
+  <script>
+    (function () {
+      const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+      if (!('serviceWorker' in navigator) || isLocalhost) {
+        return;
+      }
+
+      function notifyUpdate(registration) {
+        console.info('GoldTaxi: service worker update available.');
+        window.dispatchEvent(
+          new CustomEvent('goldtaxi-sw-update-available', {
+            detail: {
+              scriptURL: registration.waiting?.scriptURL || registration.active?.scriptURL || '/sw.js',
+            },
+          }),
+        );
+      }
+
+      function registerServiceWorker() {
+        window.goldTaxiServiceWorkerReady = navigator.serviceWorker
+          .register('/sw.js', { scope: '/' })
+          .then((registration) => {
+            if (registration.waiting) {
+              notifyUpdate(registration);
+            }
+
+            registration.addEventListener('updatefound', () => {
+              const worker = registration.installing;
+              if (!worker) {
+                return;
+              }
+
+              worker.addEventListener('statechange', () => {
+                if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                  notifyUpdate(registration);
+                }
+              });
+            });
+
+            return registration;
+          })
+          .catch((error) => {
+            console.warn('GoldTaxi: service worker registration failed.', error);
+            throw error;
+          });
+      }
+
+      if (document.readyState === 'loading') {
+        window.addEventListener('DOMContentLoaded', registerServiceWorker, { once: true });
+      } else {
+        registerServiceWorker();
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div id="loading" style="position: fixed; inset: 0; background-color: #111111; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: #f5f0e1; font-family: Arial, sans-serif; text-align: center; padding: 24px;">
+    <div style="width: 50px; height: 50px; border: 4px solid #333; border-top: 4px solid #D4AF37; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+    <h2 style="color: #D4AF37; margin-top: 20px; font-weight: 500; letter-spacing: 2px;">GOLDTAXI</h2>
+    <p id="loading-status" style="margin: 8px 0 0; color: #c8c1ae; max-width: 420px;">Loading application shell...</p>
+    <pre id="loading-error" style="display: none; margin-top: 16px; max-width: 880px; max-height: 42vh; overflow: auto; white-space: pre-wrap; text-align: left; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 16px; color: #ffd7d7;"></pre>
+    <style>
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+  </div>
+  <script>
+    (function () {
+      const loading = document.getElementById('loading');
+      const status = document.getElementById('loading-status');
+      const errorBox = document.getElementById('loading-error');
+
+      function showError(message) {
+        if (!loading || !errorBox || !status) return;
+        status.textContent = 'GoldTaxi failed to start.';
+        errorBox.style.display = 'block';
+        errorBox.textContent = message;
+      }
+
+      window.addEventListener('error', function(event) {
+        const message = [
+          event.message || 'Unknown browser error',
+          event.filename ? 'File: ' + event.filename : '',
+          event.lineno ? 'Line: ' + event.lineno + ':' + event.colno : '',
+        ].filter(Boolean).join('\n');
+        showError(message);
+      });
+
+      window.addEventListener('unhandledrejection', function(event) {
+        const reason = event.reason;
+        const message = typeof reason === 'string'
+          ? reason
+          : reason && reason.stack
+            ? reason.stack
+            : JSON.stringify(reason, null, 2);
+        showError(message || 'Unhandled promise rejection');
+      });
+
+      window.setTimeout(function () {
+        if (!document.querySelector('flt-glass-pane')) {
+          status.textContent = 'Still starting... if this takes too long, the error details will appear here.';
+        }
+      }, 8000);
+    })();
+
+    window.addEventListener('flutter-first-frame', function() {
+      var loading = document.getElementById('loading');
+      if (loading) { loading.style.opacity = '0'; setTimeout(() => loading.remove(), 500); }
+    });
+  </script>
+
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
