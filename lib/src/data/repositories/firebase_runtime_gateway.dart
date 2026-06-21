@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 
-import '../../../firebase_options.dart';
 import '../../models/app_user_role.dart';
 import '../../services/auth/auth_gateway.dart';
 import '../../services/auth/firebase_auth_gateway.dart';
@@ -93,8 +92,9 @@ class FirebaseRuntimeGatewayImpl implements FirebaseRuntimeGateway {
       return;
     }
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
+      throw StateError(
+        'Firebase is not initialized. Call initializeFirebaseServices(config) before '
+        'initializing Firebase runtime.',
       );
     }
 
@@ -449,6 +449,11 @@ class FirebaseRuntimeGatewayImpl implements FirebaseRuntimeGateway {
   void _ensureInitialized() {
     if (!_initialized) {
       throw StateError('Firebase runtime has not finished initialization.');
+    }
+    if (Firebase.apps.isEmpty) {
+      throw StateError(
+        'Firebase runtime is initialized but Firebase apps are no longer available.',
+      );
     }
   }
 }

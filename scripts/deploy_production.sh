@@ -45,16 +45,20 @@ validate_env_file() {
         missing_keys+=("BACKEND_MODE (must be 'firebase')")
     fi
     
-    if ! grep -q "^GOOGLE_MAPS_API_KEY=" "$env_file" || grep -q "^GOOGLE_MAPS_API_KEY=YOUR_" "$env_file"; then
+    if ! grep -q "^GOOGLE_MAPS_API_KEY=.[[:graph:]]" "$env_file" || grep -q "^GOOGLE_MAPS_API_KEY=YOUR_" "$env_file"; then
         missing_keys+=("GOOGLE_MAPS_API_KEY")
     fi
     
-    if ! grep -q "^GOOGLE_PLACES_API_KEY=" "$env_file" || grep -q "^GOOGLE_PLACES_API_KEY=YOUR_" "$env_file"; then
+    if ! grep -q "^GOOGLE_PLACES_API_KEY=.[[:graph:]]" "$env_file" || grep -q "^GOOGLE_PLACES_API_KEY=YOUR_" "$env_file"; then
         missing_keys+=("GOOGLE_PLACES_API_KEY")
     fi
     
-    if ! grep -q "^FIREBASE_WEB_VAPID_KEY=" "$env_file" || grep -q "^FIREBASE_WEB_VAPID_KEY=YOUR_" "$env_file"; then
+    if ! grep -q "^FIREBASE_WEB_VAPID_KEY=.[[:graph:]]" "$env_file" || grep -q "^FIREBASE_WEB_VAPID_KEY=YOUR_" "$env_file"; then
         missing_keys+=("FIREBASE_WEB_VAPID_KEY")
+    fi
+    
+    if ! grep -q "^FIREBASE_WEB_APP_CHECK_SITE_KEY=.[[:graph:]]" "$env_file" || grep -q "^FIREBASE_WEB_APP_CHECK_SITE_KEY=YOUR_" "$env_file"; then
+        missing_keys+=("FIREBASE_WEB_APP_CHECK_SITE_KEY")
     fi
     
     if [ ${#missing_keys[@]} -gt 0 ]; then
@@ -64,7 +68,7 @@ validate_env_file() {
         done
         return 1
     fi
-    
+
     echo -e "${GREEN}✓ ${env_name} environment file validated${NC}"
     return 0
 }

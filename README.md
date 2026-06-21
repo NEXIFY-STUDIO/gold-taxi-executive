@@ -22,6 +22,8 @@ cp .env.production .env.production.development
 - `GOOGLE_MAPS_API_KEY` - From Google Cloud Console (Maps JavaScript API)
 - `GOOGLE_PLACES_API_KEY` - From Google Cloud Console (Places API)
 - `FIREBASE_WEB_VAPID_KEY` - From Firebase Console > Project Settings > Cloud Messaging > Web config
+- `FIREBASE_WEB_APP_CHECK_SITE_KEY` - From Firebase Console > App Check > Web reCAPTCHA site key
+- `FIREBASE_APP_CHECK_DEBUG_TOKEN` - Optional for local/dev App Check debug mode
 - `BACKEND_MODE` - Set to `mock` for development, `firebase` for production
 
 ### Whitelabel build labels
@@ -30,7 +32,7 @@ or individual `--dart-define` flags:
 
 ```bash
 flutter build web --release \
-  --dart-define-from-file=.env.production.deployment \
+  --dart-define-from-file=.env.production.development \
   --dart-define=WHITELABEL_BRAND_NAME="Partner Taxi" \
   --dart-define=WHITELABEL_OPERATOR_LABEL="Private chauffeur platform" \
   --dart-define=WHITELABEL_MARKET_LABEL="Swiss premium mobility" \

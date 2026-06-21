@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../../firebase_options.dart';
 import '../../models/app_user_role.dart';
 import 'auth_gateway.dart';
 
@@ -37,7 +36,7 @@ class FirebaseAuthGateway implements GoldTaxiAuthGateway {
 
   @override
   Future<AuthProfile> ensureSignedInProfile() async {
-    await _ensureFirebaseReady();
+    _ensureFirebaseReady();
     if (_clientAuth.currentUser == null) {
       await _clientAuth.signInAnonymously();
     }
@@ -46,7 +45,7 @@ class FirebaseAuthGateway implements GoldTaxiAuthGateway {
 
   @override
   Future<AuthProfile> signInWithGoogle() async {
-    await _ensureFirebaseReady();
+    _ensureFirebaseReady();
 
     final currentUser = _clientAuth.currentUser;
     if (currentUser != null && currentUser.isAnonymous) {
@@ -74,19 +73,19 @@ class FirebaseAuthGateway implements GoldTaxiAuthGateway {
 
   @override
   Future<AuthProfile> signOutToGuest() async {
-    await _ensureFirebaseReady();
+    _ensureFirebaseReady();
     await _clientAuth.signOut();
     await _clientAuth.signInAnonymously();
     return _bootstrapCurrentUser();
   }
 
-  Future<void> _ensureFirebaseReady() async {
-    if (Firebase.apps.isNotEmpty) {
-      return;
+  void _ensureFirebaseReady() {
+    if (Firebase.apps.isEmpty) {
+      throw StateError(
+        'Firebase is not initialized. Call initializeFirebaseServices(config) '
+        'before authentication operations.',
+      );
     }
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
   }
 
   GoogleAuthProvider _googleProvider() {

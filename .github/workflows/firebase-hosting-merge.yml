@@ -18,16 +18,21 @@ jobs:
           : "${GOOGLE_MAPS_API_KEY:?Missing GitHub secret GOOGLE_MAPS_API_KEY}"
           : "${GOOGLE_PLACES_API_KEY:?Missing GitHub secret GOOGLE_PLACES_API_KEY}"
           : "${FIREBASE_WEB_VAPID_KEY:?Missing GitHub secret FIREBASE_WEB_VAPID_KEY}"
+          : "${FIREBASE_WEB_APP_CHECK_SITE_KEY:?Missing GitHub secret FIREBASE_WEB_APP_CHECK_SITE_KEY}"
           {
             echo "BACKEND_MODE=firebase"
             echo "GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}"
             echo "GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}"
             echo "FIREBASE_WEB_VAPID_KEY=${FIREBASE_WEB_VAPID_KEY}"
+            echo "FIREBASE_WEB_APP_CHECK_SITE_KEY=${FIREBASE_WEB_APP_CHECK_SITE_KEY}"
+            echo "FIREBASE_APP_CHECK_DEBUG_TOKEN=${FIREBASE_APP_CHECK_DEBUG_TOKEN}"
           } > .env.production
         env:
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
           FIREBASE_WEB_VAPID_KEY: ${{ secrets.FIREBASE_WEB_VAPID_KEY }}
+          FIREBASE_WEB_APP_CHECK_SITE_KEY: ${{ secrets.FIREBASE_WEB_APP_CHECK_SITE_KEY }}
+          FIREBASE_APP_CHECK_DEBUG_TOKEN: ${{ secrets.FIREBASE_APP_CHECK_DEBUG_TOKEN }}
       - name: Build Web
         run: flutter build web --release --pwa-strategy=none --dart-define-from-file=.env.production
       - name: Deploy to Firebase
